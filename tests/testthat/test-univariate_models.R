@@ -446,3 +446,49 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
     sum(eta_w)
   )
 }
+
+# test yada::sim_univariate_cont
+# This could be combined with the for loop used to test
+# calc_neg_log_lik_vect_cont and calc_neg_log_lik_cont
+
+# A uniform prior on x on the interval 0 to 80
+th_x <- list(fitType = 'uniform',xmin=0,xmax=80)
+N <- 100
+meanSpec = 'powLaw'
+th_w <- c_powLaw
+set.seed(180190)
+
+for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+  modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec)
+  # Use same noise specifications as for the ordinal case above
+  if(noiseSpec == 'const') {
+    th_w <- c(th_w,beta_const)
+  } else if(noiseSpec == 'lin_pos_int') {
+    th_w <- c(th_w,beta_lin_pos_int)
+  } else if(noiseSpec == 'hyperb') {
+    th_w <- c(th_w,beta_hyperb)
+  } else {
+    stop('This should not happen')
+  }
+
+  # Test when inputting th_x and N
+  expect_error(
+    sim <- sim_univariate_cont(th_w,modSpec,N,th_x),
+    NA
+  )
+
+  expect_equal(
+    names(sim),
+    c('x','w')
+  )
+
+  expect_equal(
+    length(sim$x),
+    N
+  )
+
+  expect_equal(
+    length(sim$w),
+    N
+  )
+}

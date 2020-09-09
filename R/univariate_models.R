@@ -238,7 +238,7 @@ calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
 }
 
 #' Calcuate the negative log-likelihood for a continuous model
-#' @param th_v The continuous parameter vector [c,kappa]
+#' @param th_w The continuous parameter vector [c,kappa]
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses
 #' @param modSpec The model specification'
@@ -246,4 +246,45 @@ calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
 #' @export
 calc_neg_log_lik_cont <- function(th_w,x,w,modSpec) {
   return(sum(calc_neg_log_lik_vect_cont(th_w,x,w,modSpec)))
+}
+
+
+#' Create simulated data for a univariate continuous model. For x, either the
+#' number of samples (N) and a parameter vector (th_x) must be given, or the
+#' full vector (x) must be given.
+#' @param th_w The continuous parameter vector [c,kappa]
+#' @param modSpec The model specification'
+#' @param N The number of samples to simulate
+#' @param th_x The parameterization for x
+#' @param x The vector of independent variables
+#' @return A list object of simulated data containing x and w
+#' @export
+sim_univariate_cont <- function(th_w,modSpec,N=NA,th_x=NA,x=NA) {
+  # N is the number of simulated observations
+  # th_x parameterizes x. Currently, only a uniform distribution is supported
+  # th_w parameterizes w (given x)
+
+  have_x_model  <- !all(is.na(th_x)) && !is.na(N)
+  have_x_direct <- !all(is.na(x))
+
+  if(have_x_model + have_x_direct != 1) {
+    stop('Either (1) th_x and N should be input or (2) x should be input')
+  }
+
+  if(have_x_model) {
+    if(th_x$fitType == 'uniform') {
+      x <- runif(N,th_x$xmin,th_x$xmax)
+    } else {
+      stop('Only uniform currently supported')
+    }
+  } else {
+    N <- length(x)
+  }
+
+  h     <- calc_mean_univariate_cont (x,th_w,modSpec)
+  psi   <- calc_noise_univariate_cont(x,th_w,modSpec)
+
+  w <- h + rnorm(N)*psi
+  
+  return(list(x=x,w=w))
 }

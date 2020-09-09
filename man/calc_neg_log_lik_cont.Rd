@@ -7,13 +7,13 @@
 calc_neg_log_lik_cont(th_w, x, w, modSpec)
 }
 \arguments{
+\item{th_w}{The continuous parameter vector [c,kappa]}
+
 \item{x}{The vector of independent variables}
 
 \item{w}{The vector of continuous responses}
 
 \item{modSpec}{The model specification'}
-
-\item{th_v}{The continuous parameter vector [c,kappa]}
 }
 \value{
 The negative log-likelihood
