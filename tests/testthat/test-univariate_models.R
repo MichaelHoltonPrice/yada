@@ -54,6 +54,7 @@ expect_error(
   'Unrecognized variable name for a continuous variable, notAVariable'
 )
 
+# Test yada::get_num_var_univariate_ord
 expect_equal(
   yada::get_num_var_univariate_ord('b',list(meanSpec='powLawOrd')),
   1
@@ -114,6 +115,7 @@ expect_error(
   'Unrecognized variable name for an ordinal variable, notAVariable'
 )
 
+# Test yada::get_var_index_univariate_cont
 expect_equal(
   yada::get_var_index_univariate_cont('c',list(meanSpec='powLaw')),
   1:3
@@ -159,6 +161,7 @@ expect_error(
   'Unrecognized variable name for a continuous variable, notAVariable'
 )
 
+# Test yada::get_var_index_univariate_ord
 expect_equal(
   yada::get_var_index_univariate_ord('b',list(meanSpec='powLawOrd')),
   1:1
@@ -312,5 +315,41 @@ expect_equal(
 expect_error(
   yada::get_var_index_univariate_ord('notAVariable',list()),
   'Unrecognized variable name for an ordinal variable, notAVariable'
+)
+
+# Test yada::calc_noise_univariate_cont
+# This is a wrapper to call calc_noise in noise_functions.R. Hence, test one 
+# case only since the full functionality of calc_noise is checked in
+# test-noise_functions.R.
+expect_equal(
+  yada::calc_noise_univariate_cont(c(1,1.5),c(0.5,0.2,-.4,0.25,0.10),list(meanSpec='powLaw',noiseSpec='lin_pos_int')),
+  0.25*(1 + c(1,1.5)*0.10)
+)
+
+# Test yada::calc_noise_univariate_ord
+# This is a wrapper to call calc_noise in noise_functions.R. Hence, test one 
+# case only since the full functionality of calc_noise is checked in
+# test-noise_functions.R.
+expect_equal(
+  yada::calc_noise_univariate_ord(c(1,1.5),c(0.5,1,2,3,0.25,0.10),list(meanSpec='powLawOrd',noiseSpec='lin_pos_int',M=3)),
+  0.25*(1 + c(1,1.5)*0.10)
+)
+
+# Test yada::calc_mean_univariate_cont
+# This is a wrapper to call calc_mean in mean_functions.R. Hence, test one case
+# only since the full functionality of calc_mean is checked in
+# test-mean_functions.R.
+expect_equal(
+  yada::calc_mean_univariate_cont(c(1,1.5),c(0.5,0.2,-.4,0.25,0.10),list(meanSpec='powLaw',noiseSpec='lin_pos_int')),
+  0.2*c(1,1.5)^0.5 - 0.4
+)
+
+# Test yada::calc_mean_univariate_ord
+# This is a wrapper to call calc_mean in mean_functions.R. Hence, test one case
+# only since the full functionality of calc_mean is checked in
+# test-mean_functions.R.
+expect_equal(
+  yada::calc_mean_univariate_ord(c(1,1.5),c(0.5,1,2,3,0.25,0.10),list(meanSpec='powLawOrd',noiseSpec='lin_pos_int',M=3)),
+  c(1,1.5)^0.5
 )
 

@@ -97,85 +97,126 @@ get_var_index_univariate_ord <- function(varName,modSpec) {
   return(numPreceding + 1:get_num_var_univariate_ord(varName,modSpec))
 }
 
+#' Calcuate the noise, psi, for a univariate continuous model by extracting beta
+#' from th_w and calling calc_noise.
+#'
+#' @param x The vector of independent variables
+#' @param th_w The continuous parameter vector [c,kappa]
+#' @param modSpec The model specification
+#' @return The noise, psi(x,kappa), which is the same length as x
 #' @export
-calc_neg_log_lik_vect_ord <- function(th_v,x,v,noiseSpec='const',transformVar=F) {
-  # th_v has ordering [rho,tau_1,...tau_2,s,kappa]
-  # eta_v is the negative log-likelihood
-  # For optimization, make th_v the first input
-
-  if( !(noiseSpec %in% c('const','linear','linear_pos_int','linear_no_int','hyperb'))) {
-    stop(paste0('Unrecognized noiseSpec, ',noiseSpec))
-  }
-
-  haveKappa <- noiseSpec %in% c('linear','linear_pos_int','hyperb')
-  M <- calc_M(th_v,noiseSpec)
-
-  if(transformVar) {
-    # Build modSpec
-    modSpec <- list(meanSpec='powLawOrd')
-    modSpec$J <- 1
-    modSpec$M <- M
-    modSpec$noiseSpec <- noiseSpec
-
-    th_v <- theta_y_unconstr2constr(th_v,modSpec)
-  }
-
-  rho <- th_v[1]           # rho
-  tau <- th_v[2:(M+1)]     # tau_1 ... tau_M
-  s   <- th_v[M+2]         # s
-
-  if(haveKappa) {
-    if(noiseSpec %in% c('linear','linear_pos_int')) {
-      kappa <- th_v[M+3]     # kappa
-    } else if(noiseSpec == 'hyperb') {
-      kappa1 <- th_v[M+3]    # kappa1 (y0)
-      kappa2 <- th_v[M+4]    # kappa1 (sigma0)
-    } else {
-      stop(paste0('Unrecognized noiseSpec with kappa, ',noiseSpec))
-    }
-  }
-
-  # Initialize vector of negative log-likelihoods (eta_v)
-  N <- length(x)
-  if(N != length(v)) {
-    stop('Input vectors x and v do not match in length')
-  }
-  eta_v <- rep(NA,N)
- 
-  for(m in 0:M) { 
-    ind <- v == m
-    if(sum(ind) > 0 ) {
-      xm <- x[ind]
-      if(noiseSpec == 'const') {
-        sig <- s 
-      } else if(noiseSpec == 'linear') {
-        sig <- s*xm + kappa
-      } else if(noiseSpec == 'linear_pos_int') {
-        sig <- s*(1+kappa*xm)
-      } else if(noiseSpec == 'linear_no_int') {
-        sig <- s*xm
-      } else if(noiseSpec == 'hyperb') {
-        sig <- (s/2)*(sqrt((xm+kappa1/s)^2 + 4*kappa2*(kappa2 - kappa1)/s^2) + xm + kappa1/s)
-      } else {
-        stop(paste('Unrecognized noiseSpec,',noiseSpec))
-      }
-
-      if(m==0) {
-        Phi_lo <- 0
-      } else {
-        Phi_lo <- pnorm( (tau[m]- xm^rho)/sig )
-      }
-
-      if(m==M) {
-        Phi_hi <- 1
-      } else {
-        Phi_hi <- pnorm( (tau[m+1]- xm^rho)/sig )
-      }
-
-      eta_v[ind] <- - log(Phi_hi - Phi_lo)
-    }
-  }
-
-  return(eta_v)
+calc_noise_univariate_cont <- function(x,th_w,modSpec) {
+  kappa <- th_w[get_var_index_univariate_cont('kappa',modSpec)]
+  psi <- calc_noise(x,modSpec$noiseSpec,kappa)
+  return(psi)
 }
+
+#' Calcuate the noise, gamma, for a univariate ordinal model by extracting beta
+#' from th_v and calling calc_noise.
+#'
+#' @param x The vector of independent variables
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param modSpec The model specification
+#' @return The noise, gamma(x,beta), which is the same length as x
+#' @export
+calc_noise_univariate_ord <- function(x,th_v,modSpec) {
+  beta <- th_v[get_var_index_univariate_ord('beta',modSpec)]
+  gamma <- calc_noise(x,modSpec$noiseSpec,beta)
+  return(gamma)
+}
+
+#' Calcuate the mean, h, for a univariate continuous model by extracting c from
+#' th_w and calling calc_mean.
+#'
+#' @param x The vector of independent variables
+#' @param th_w The continuous parameter vector [c,kappa]
+#' @param modSpec The model specification
+#' @return The mean, h(x,c), which is the same length as x
+#' @export
+calc_mean_univariate_cont <- function(x,th_w,modSpec) {
+  c <- th_w[get_var_index_univariate_cont('c',modSpec)]
+  h <- calc_mean(x,modSpec$meanSpec,c)
+  return(h)
+}
+
+#' Calcuate the mean, g, for a univariate ordinal model by extracting b from th_v
+#' and calling calc_mean.
+#'
+#' @param x The vector of independent variables
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param modSpec The model specification
+#' @return The mean, g(x,b), which is the same length as x
+#' @export
+calc_mean_univariate_ord <- function(x,th_v,modSpec) {
+  b <- th_v[get_var_index_univariate_ord('b',modSpec)]
+  g <- calc_mean(x,modSpec$meanSpec,b)
+  return(g)
+}
+#calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
+#  # TODO: Implement variable transformations
+#  # th_v has ordering [b,tau,beta]
+#  # eta_v is the negative log-likelihood
+#  # For optimization, make th_v the first input
+#  tau <- th_v[get_var_index_univariate_ord('tau',modSpec)]
+#
+#  M <- modSpec$M
+#
+#  rho <- th_v[1]           # rho
+#  tau <- th_v[2:(M+1)]     # tau_1 ... tau_M
+#  s   <- th_v[M+2]         # s
+#
+#  if(haveKappa) {
+#    if(noiseSpec %in% c('linear','linear_pos_int')) {
+#      kappa <- th_v[M+3]     # kappa
+#    } else if(noiseSpec == 'hyperb') {
+#      kappa1 <- th_v[M+3]    # kappa1 (y0)
+#      kappa2 <- th_v[M+4]    # kappa1 (sigma0)
+#    } else {
+#      stop(paste0('Unrecognized noiseSpec with kappa, ',noiseSpec))
+#    }
+#  }
+#
+#  # Initialize vector of negative log-likelihoods (eta_v)
+#  N <- length(x)
+#  if(N != length(v)) {
+#    stop('Input vectors x and v do not match in length')
+#  }
+#  eta_v <- rep(NA,N)
+# 
+#  for(m in 0:M) { 
+#    ind <- v == m
+#    if(sum(ind) > 0 ) {
+#      xm <- x[ind]
+#      if(noiseSpec == 'const') {
+#        sig <- s 
+#      } else if(noiseSpec == 'linear') {
+#        sig <- s*xm + kappa
+#      } else if(noiseSpec == 'linear_pos_int') {
+#        sig <- s*(1+kappa*xm)
+#      } else if(noiseSpec == 'linear_no_int') {
+#        sig <- s*xm
+#      } else if(noiseSpec == 'hyperb') {
+#        sig <- (s/2)*(sqrt((xm+kappa1/s)^2 + 4*kappa2*(kappa2 - kappa1)/s^2) + xm + kappa1/s)
+#      } else {
+#        stop(paste('Unrecognized noiseSpec,',noiseSpec))
+#      }
+#
+#      if(m==0) {
+#        Phi_lo <- 0
+#      } else {
+#        Phi_lo <- pnorm( (tau[m]- xm^rho)/sig )
+#      }
+#
+#      if(m==M) {
+#        Phi_hi <- 1
+#      } else {
+#        Phi_hi <- pnorm( (tau[m+1]- xm^rho)/sig )
+#      }
+#
+#      eta_v[ind] <- - log(Phi_hi - Phi_lo)
+#    }
+#  }
+#
+#  return(eta_v)
+#}
 
