@@ -152,71 +152,63 @@ calc_mean_univariate_ord <- function(x,th_v,modSpec) {
   g <- calc_mean(x,modSpec$meanSpec,b)
   return(g)
 }
-#calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
-#  # TODO: Implement variable transformations
-#  # th_v has ordering [b,tau,beta]
-#  # eta_v is the negative log-likelihood
-#  # For optimization, make th_v the first input
-#  tau <- th_v[get_var_index_univariate_ord('tau',modSpec)]
-#
-#  M <- modSpec$M
-#
-#  rho <- th_v[1]           # rho
-#  tau <- th_v[2:(M+1)]     # tau_1 ... tau_M
-#  s   <- th_v[M+2]         # s
-#
-#  if(haveKappa) {
-#    if(noiseSpec %in% c('linear','linear_pos_int')) {
-#      kappa <- th_v[M+3]     # kappa
-#    } else if(noiseSpec == 'hyperb') {
-#      kappa1 <- th_v[M+3]    # kappa1 (y0)
-#      kappa2 <- th_v[M+4]    # kappa1 (sigma0)
-#    } else {
-#      stop(paste0('Unrecognized noiseSpec with kappa, ',noiseSpec))
-#    }
-#  }
-#
-#  # Initialize vector of negative log-likelihoods (eta_v)
-#  N <- length(x)
-#  if(N != length(v)) {
-#    stop('Input vectors x and v do not match in length')
-#  }
-#  eta_v <- rep(NA,N)
-# 
-#  for(m in 0:M) { 
-#    ind <- v == m
-#    if(sum(ind) > 0 ) {
-#      xm <- x[ind]
-#      if(noiseSpec == 'const') {
-#        sig <- s 
-#      } else if(noiseSpec == 'linear') {
-#        sig <- s*xm + kappa
-#      } else if(noiseSpec == 'linear_pos_int') {
-#        sig <- s*(1+kappa*xm)
-#      } else if(noiseSpec == 'linear_no_int') {
-#        sig <- s*xm
-#      } else if(noiseSpec == 'hyperb') {
-#        sig <- (s/2)*(sqrt((xm+kappa1/s)^2 + 4*kappa2*(kappa2 - kappa1)/s^2) + xm + kappa1/s)
-#      } else {
-#        stop(paste('Unrecognized noiseSpec,',noiseSpec))
-#      }
-#
-#      if(m==0) {
-#        Phi_lo <- 0
-#      } else {
-#        Phi_lo <- pnorm( (tau[m]- xm^rho)/sig )
-#      }
-#
-#      if(m==M) {
-#        Phi_hi <- 1
-#      } else {
-#        Phi_hi <- pnorm( (tau[m+1]- xm^rho)/sig )
-#      }
-#
-#      eta_v[ind] <- - log(Phi_hi - Phi_lo)
-#    }
-#  }
-#
-#  return(eta_v)
-#}
 
+#' Calcuate the vector of negative log-likelihoods for an ordinal model
+#'
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param x The vector of independent variables
+#' @param v The vector of ordinal responses
+#' @param modSpec The model specification
+#' @return The vector of negative log-likelihoods, which is the same length as x
+#' @export
+calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
+  # TODO: Implement variable transformations
+  # th_v has ordering [b,tau,beta]
+  # eta_v is the negative log-likelihood
+  # For optimization, make th_v the first input
+
+  # Get the number of observations and check that x and v are the same length
+  N <- length(x)
+  if(N != length(v)) {
+    stop('Input vectors x and v do not match in length')
+  }
+
+  g     <- calc_mean_univariate_ord (x,th_v,modSpec)
+  gamma <- calc_noise_univariate_ord(x,th_v,modSpec)
+
+  tau <- th_v[get_var_index_univariate_ord('tau',modSpec)]
+  # Initialize vector of negative log-likelihoods (eta_v)
+  eta_v <- rep(NA,N)
+
+  # Loop over m values to calculate eta_v
+  for(m in 0:modSpec$M) { 
+    indm <- v == m
+    if(sum(indm) > 0 ) {
+      if(m==0) {
+        Phi_lo <- 0
+      } else {
+        Phi_lo <- pnorm( (tau[m]- g[indm])/gamma[indm] )
+      }
+
+      if(m==modSpec$M) {
+        Phi_hi <- 1
+      } else {
+        Phi_hi <- pnorm( (tau[m+1]- g[indm])/gamma[indm] )
+      }
+      eta_v[indm] <- -log(Phi_hi - Phi_lo)
+    }
+  }
+  return(eta_v)
+}
+
+#' Calcuate the negative log-likelihood
+#'
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param x The vector of independent variables
+#' @param v The vector of ordinal responses
+#' @param modSpec The model specification
+#' @return The negative log-likelihood
+#' @export
+calc_neg_log_lik_ord <- function(th_v,x,v,modSpec) {
+  return(sum(calc_neg_log_lik_vect_ord(th_v,x,v,modSpec)))
+}

@@ -353,3 +353,56 @@ expect_equal(
   c(1,1.5)^0.5
 )
 
+# test yada::calc_neg_log_lik_vect_ord
+c_powLawOrd <- 0.90
+tau1        <- 11
+tau2        <- 15
+tau         <- c(tau1,tau2)
+M           <- length(tau)
+beta_const       <- c(5)
+beta_lin_pos_int <- c(0.05,0.01)
+beta_hyperb      <- c(0.2,0.2,-2)
+
+# Directly calculate the log likelihood for all combinations of the mean and
+# noise specifications
+x1 <- 10
+x2 <- 20
+x3 <- 30
+x <- c(x1,x2,x3)
+v <- c(0,1,2)
+for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
+  if(meanSpec == 'powLawOrd') {
+    th_v <- c_powLawOrd
+  } else {
+    th_v <- c()
+  }
+  th_v <- c(th_v,tau)
+  for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+    modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec,M=M)
+    if(noiseSpec == 'const') {
+      th_v <- c(th_v,beta_const)
+    } else if(noiseSpec == 'lin_pos_int') {
+      th_v <- c(th_v,beta_lin_pos_int)
+    } else if(noiseSpec == 'hyperb') {
+      th_v <- c(th_v,beta_hyperb)
+    } else {
+      stop('This should not happen')
+    }
+    g   <- calc_mean_univariate_ord(x,th_v,modSpec)
+    psi <- calc_noise_univariate_ord (x,th_v,modSpec)
+
+    eta_v1 <- -log(pnorm( (tau1 - g[1])/psi[1] ))
+    eta_v2 <- -log( pnorm( (tau2 - g[2])/psi[2] ) - pnorm( (tau1 - g[2])/psi[2] ))
+    eta_v3 <- -log( 1 - pnorm( (tau2 - g[3])/psi[3] ))
+    eta_v  <- c(eta_v1,eta_v2,eta_v3)
+
+    expect_equal(
+      calc_neg_log_lik_vect_ord(th_v,x,v,modSpec),
+      eta_v
+    )
+    expect_equal(
+      calc_neg_log_lik_ord(th_v,x,v,modSpec),
+      eta_v1 + eta_v2 + eta_v3
+    )
+  }
+}

@@ -3,6 +3,8 @@
 export(calc_mean)
 export(calc_mean_univariate_cont)
 export(calc_mean_univariate_ord)
+export(calc_neg_log_lik_ord)
+export(calc_neg_log_lik_vect_ord)
 export(calc_noise)
 export(calc_noise_univariate_cont)
 export(calc_noise_univariate_ord)
