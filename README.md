@@ -12,15 +12,14 @@ status](https://travis-ci.org/eehh-stanford/yada.svg?branch=identif)](https://tr
 status](https://codecov.io/gh/eehh-stanford/yada/branch/identif/graph/badge.svg)](https://codecov.io/github/eehh-stanford/yada?branch=identif)
 
 `yada`, which stands for Yet Another Demographic Analysis package,
-supports a variety of demographic tasks, with most applications drawn
-from forensic anthroplogy and archaeology.
+implements age estimation using a mixed cumulative probit model.
 
 ## Installation
 
 You can install yada with:
 
 ``` r
-devtools::install_github("eehh-stanford/yada")
+devtools::install_github("MichaelHoltonPrice/yada")
 ```
 
 ## Contributing
