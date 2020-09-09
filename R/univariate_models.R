@@ -201,7 +201,7 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
   return(eta_v)
 }
 
-#' Calcuate the negative log-likelihood
+#' Calcuate the negative log-likelihood for an ordinal model
 #'
 #' @param th_v The ordinal parameter vector [b,tau,beta]
 #' @param x The vector of independent variables
@@ -211,4 +211,39 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
 #' @export
 calc_neg_log_lik_ord <- function(th_v,x,v,modSpec) {
   return(sum(calc_neg_log_lik_vect_ord(th_v,x,v,modSpec)))
+}
+
+
+#' Calcuate the vector of negative log-likelihoods for a continuous model
+#'
+#' @param th_v The continuous parameter vector [c,kappa]
+#' @param x The vector of independent variables
+#' @param w The vector of continuous responses
+#' @param modSpec The model specification
+#' @return The vector of negative log-likelihoods, which is the same length as x
+#' @export
+calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
+  # TODO: Implement variable transformations
+
+  # Get the number of observations and check that x and w are the same length
+  N <- length(x)
+  if(N != length(w)) {
+    stop('Input vectors x and w do not match in length')
+  }
+
+  h     <- calc_mean_univariate_cont (x,th_w,modSpec)
+  psi   <- calc_noise_univariate_cont(x,th_w,modSpec)
+  eta_w <- -dnorm(w,h,psi,log=T)
+  return(eta_w)
+}
+
+#' Calcuate the negative log-likelihood for a continuous model
+#' @param th_v The continuous parameter vector [c,kappa]
+#' @param x The vector of independent variables
+#' @param w The vector of continuous responses
+#' @param modSpec The model specification'
+#' @return The negative log-likelihood
+#' @export
+calc_neg_log_lik_cont <- function(th_w,x,w,modSpec) {
+  return(sum(calc_neg_log_lik_vect_cont(th_w,x,w,modSpec)))
 }

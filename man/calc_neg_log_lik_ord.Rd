@@ -2,7 +2,7 @@
 % Please edit documentation in R/univariate_models.R
 \name{calc_neg_log_lik_ord}
 \alias{calc_neg_log_lik_ord}
-\title{Calcuate the negative log-likelihood}
+\title{Calcuate the negative log-likelihood for an ordinal model}
 \usage{
 calc_neg_log_lik_ord(th_v, x, v, modSpec)
 }
@@ -19,5 +19,5 @@ calc_neg_log_lik_ord(th_v, x, v, modSpec)
 The negative log-likelihood
 }
 \description{
-Calcuate the negative log-likelihood
+Calcuate the negative log-likelihood for an ordinal model
 }
