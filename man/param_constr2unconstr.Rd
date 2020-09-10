@@ -3,27 +3,29 @@
 \name{param_constr2unconstr}
 \alias{param_constr2unconstr}
 \title{Transform a vector from a constrained to an unconstrained representation.
-The categories and bounds are:
-category	 min	max
-0		-Inf	Inf
-1		   0	Inf
-2		  -1	 +1}
+The categories are:
+Category	Description
+0		Unconstrained
+1		Positive
+2		-1 to 1
+3		Positive difference}
 \usage{
-param_constr2unconstr(param, transfMat)
+param_constr2unconstr(param, tfCatVect)
 }
 \arguments{
 \item{param}{The vector of constrained parameters}
 
-\item{transfMat}{The matrix specifying the transform}
+\item{tfCatVect}{The vector of transformation categories}
 }
 \value{
-The vector unconstrained parameters, param_bar
+The vector of unconstrained parameters, param_bar
 }
 \description{
 Transform a vector from a constrained to an unconstrained representation.
-The categories and bounds are:
-category	 min	max
-0		-Inf	Inf
-1		   0	Inf
-2		  -1	 +1
+The categories are:
+Category	Description
+0		Unconstrained
+1		Positive
+2		-1 to 1
+3		Positive difference
 }

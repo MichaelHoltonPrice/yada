@@ -2,28 +2,30 @@
 % Please edit documentation in R/variable_transforms.R
 \name{param_unconstr2constr}
 \alias{param_unconstr2constr}
-\title{Transform a vector from an unconstrained to a unconstrained representation.
-The categories and bounds are:
-category	 min	max
-0		-Inf	Inf
-1		   0	Inf
-2		  -1	 +1}
+\title{Transform a vector from an unconstrained to a constrained representation.
+The categories are:
+Category	Description
+0		Unconstrained
+1		Positive
+2		-1 to 1
+3		Positive difference}
 \usage{
-param_unconstr2constr(param_bar, transfMat)
+param_unconstr2constr(param_bar, tfCatVect)
 }
 \arguments{
 \item{param_bar}{The vector of unconstrained parameters}
 
-\item{transfMat}{The matrix specifying the transform}
+\item{tfCatVect}{The vector of transformation categories}
 }
 \value{
 The vector of constrained parameters, param
 }
 \description{
-Transform a vector from an unconstrained to a unconstrained representation.
-The categories and bounds are:
-category	 min	max
-0		-Inf	Inf
-1		   0	Inf
-2		  -1	 +1
+Transform a vector from an unconstrained to a constrained representation.
+The categories are:
+Category	Description
+0		Unconstrained
+1		Positive
+2		-1 to 1
+3		Positive difference
 }
