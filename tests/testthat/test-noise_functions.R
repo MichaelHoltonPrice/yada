@@ -101,38 +101,38 @@ expect_error(
   'Unrecognized case, noiseSpec = notAModel'
 )
 
-# Test yada::get_noise_transform_matrix
+# Test yada::get_noise_transform_categories
 expect_equal(
-  yada::get_noise_transform_matrix('const'),
-  matrix(c(1,1,NA),nrow=1)
+  yada::get_noise_transform_categories('const'),
+  1
 )
 
 expect_equal(
-  yada::get_noise_transform_matrix(0),
-  matrix(c(1,1,NA),nrow=1)
+  yada::get_noise_transform_categories(0),
+  1
 )
 
 expect_equal(
-  yada::get_noise_transform_matrix('lin_pos_int'),
-  matrix(c(1,1,1,2,NA,NA),nrow=2)
+  yada::get_noise_transform_categories('lin_pos_int'),
+  c(1,1)
 )
 
 expect_equal(
-  yada::get_noise_transform_matrix(1),
-  matrix(c(1,1,1,2,NA,NA),nrow=2)
+  yada::get_noise_transform_categories(1),
+  c(1,1)
 )
 
 expect_equal(
-  yada::get_noise_transform_matrix('hyperb'),
-  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+  yada::get_noise_transform_categories('hyperb'),
+  c(1,1,0)
 )
 
 expect_equal(
-  yada::get_noise_transform_matrix(2),
-  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+  yada::get_noise_transform_categories(2),
+  c(1,1,0)
 )
 
 expect_error(
-  yada::get_noise_transform_matrix('notAModel'),
+  yada::get_noise_transform_categories('notAModel'),
   'Unrecognized case, noiseSpec = notAModel'
 )

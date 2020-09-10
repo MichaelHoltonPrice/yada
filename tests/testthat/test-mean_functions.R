@@ -127,48 +127,48 @@ expect_error(
   'Unrecognized case, meanSpec = notAModel'
 )
 
-# Test yada::get_mean_transform_matrix
+# Test yada::get_mean_transform_categories
 expect_equal(
-  yada::get_mean_transform_matrix('powLawOrd'),
-  matrix(c(1,1,NA),nrow=1)
+  yada::get_mean_transform_categories('powLawOrd'),
+  1
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix(0),
-  matrix(c(1,1,NA),nrow=1)
+  yada::get_mean_transform_categories(0),
+  1
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix('logOrd'),
-  matrix(NA,nrow=0,ncol=3)
+  yada::get_mean_transform_categories('logOrd'),
+  c()
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix(1),
-  matrix(NA,nrow=0,ncol=3)
+  yada::get_mean_transform_categories(1),
+  c()
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix('linOrd'),
-  matrix(NA,nrow=0,ncol=3)
+  yada::get_mean_transform_categories('linOrd'),
+  c()
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix(2),
-  matrix(NA,nrow=0,ncol=3)
+  yada::get_mean_transform_categories(2),
+  c()
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix('powLaw'),
-  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+  yada::get_mean_transform_categories('powLaw'),
+  c(1,1,0)
 )
 
 expect_equal(
-  yada::get_mean_transform_matrix(3),
-  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+  yada::get_mean_transform_categories(3),
+  c(1,1,0)
 )
 
 expect_error(
-  yada::get_mean_transform_matrix('notAModel'),
+  yada::get_mean_transform_categories('notAModel'),
   'Unrecognized case, meanSpec = notAModel'
 )

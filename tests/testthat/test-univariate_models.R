@@ -492,3 +492,53 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
     N
   )
 }
+
+
+# Test yada::get_univariate_cont_transform_matrix
+expect_equal(
+  yada::get_univariate_cont_transform_categories(list(meanSpec='powLaw',noiseSpec='const')),
+  c(1,1,0,1)
+)
+
+expect_equal(
+  yada::get_univariate_cont_transform_categories(list(meanSpec='powLaw',noiseSpec='lin_pos_int')),
+  c(1,1,0,1,1)
+)
+
+expect_equal(
+  yada::get_univariate_cont_transform_categories(list(meanSpec='powLaw',noiseSpec='hyperb')),
+  c(1,1,0,1,1,0)
+)
+
+# Test yada::get_univariate_ord_transform_matrix
+for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
+  if(meanSpec == 'powLawOrd') {
+    catVectMean <- 1
+  } else if(meanSpec == 'logOrd') {
+    catVectMean <- c()
+  } else if(meanSpec == 'linOrd') {
+    catVectMean <- c()
+  } else {
+    stop('This should not happen')
+  }
+  for(M in 1:3) {
+    catVectTau <- c(0,rep(3,M-1))
+    for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+      if(noiseSpec == 'const') {
+        catVectNoise <- 1
+      } else if(noiseSpec == 'lin_pos_int') {
+        catVectNoise <- c(1,1)
+      } else if(noiseSpec == 'hyperb') {
+        catVectNoise <- c(1,1,0)
+      } else {
+        stop('This should not happen')
+      }
+      catVect <- c(catVectMean,catVectTau,catVectNoise)
+      modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec,M=M)
+      expect_equal(
+        get_univariate_ord_transform_categories(modSpec),
+        catVect
+      )
+    }
+  }
+}

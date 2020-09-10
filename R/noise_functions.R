@@ -79,23 +79,23 @@ get_num_var_noise <- function(noiseSpec) {
   }
 }
 
-#' Get a numeric matrix that specifies the transforms as described in
-#' param_constr2uncontr and param_constr2unconstr.
+#' For a given noise specification, return a vector that gives the categories
+#' used by param_constr2uncontr and param_constr2unconstr.
 #'
 #' @param noiseSpec The noise specification
-#' @return A matrix specifying the transform
+#' @return A vector of categories
 #' @export
-get_noise_transform_matrix <- function(noiseSpec) {
+get_noise_transform_categories <- function(noiseSpec) {
   if(is.numeric(noiseSpec)) {
     noiseSpec <- noiseSpec_int2str(noiseSpec)
   }
 
   if(noiseSpec == 'const') {
-    matrix(c(1,1,NA),nrow=1)
+    return(1)
   } else if(noiseSpec == 'lin_pos_int') {
-    matrix(c(1,1,1,2,NA,NA),nrow=2)
+    return(c(1,1))
   } else if(noiseSpec == 'hyperb') {
-    matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+    return(c(1,1,0))
   } else {
     stop(paste0('Unrecognized case, noiseSpec = ',noiseSpec))
   }

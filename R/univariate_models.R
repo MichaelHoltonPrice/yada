@@ -296,6 +296,33 @@ th_w_constr2unconstr <- function(th_w,modSpec) {
 
 }
 
+
+#' For a given model specification of a univariate continuous variable, return a
+#' vector that gives the categories used by param_constr2uncontr and
+#' param_constr2unconstr.
+#'
+#' @param modSpec The model specification
+#' @return A vector of categories
+#' @export
+get_univariate_cont_transform_categories <- function(modSpec) {
+  return(c(get_mean_transform_categories(modSpec$meanSpec),get_noise_transform_categories(modSpec$noiseSpec)))
+}
+
+
+#' For a given model specification of a univariate ordinal variable, return a
+#' vector that gives the categories used by param_constr2uncontr and
+#' param_constr2unconstr.
+#'
+#' @param modSpec The model specification
+#' @return A vector of categories
+#' @export
+get_univariate_ord_transform_categories <- function(modSpec) {
+  catVectMean  <- get_mean_transform_categories( modSpec$meanSpec)
+  catVectTau   <- c(0,rep(3,modSpec$M-1))
+  catVectNoise <- get_noise_transform_categories(modSpec$noiseSpec)
+  return(c(catVectMean,catVectTau,catVectNoise))
+}
+
 #' Fit a continuous model
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses

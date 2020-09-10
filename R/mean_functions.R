@@ -88,25 +88,26 @@ get_num_var_mean <- function(meanSpec) {
 }
 
 
-#' Get a numeric matrix that specifies the transforms as described in
-#' param_constr2uncontr and param_constr2unconstr.
+
+#' For a given mean specification, return a vector that gives the categories
+#' used by param_constr2uncontr and param_constr2unconstr.
 #'
 #' @param meanSpec The mean specification
-#' @return A matrix specifying the transform
+#' @return A vector of categories
 #' @export
-get_mean_transform_matrix <- function(meanSpec) {
+get_mean_transform_categories <- function(meanSpec) {
   if(is.numeric(meanSpec)) {
     meanSpec <- meanSpec_int2str(meanSpec)
   }
 
   if(meanSpec == 'powLawOrd') {
-    matrix(c(1,1,NA),nrow=1)
+    return(1)
   } else if(meanSpec == 'logOrd') {
-    matrix(NA,nrow=0,ncol=3) # a matrix with no rows and three columns
+    return(c())
   } else if(meanSpec == 'linOrd') {
-    matrix(NA,nrow=0,ncol=3) # a matrix with no rows and three columns
+    return(c())
   } else if(meanSpec == 'powLaw') {
-    matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+    return(c(1,1,0))
   } else {
     stop(paste0('Unrecognized case, meanSpec = ',meanSpec))
   }
