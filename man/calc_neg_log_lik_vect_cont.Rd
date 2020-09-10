@@ -4,7 +4,7 @@
 \alias{calc_neg_log_lik_vect_cont}
 \title{Calcuate the vector of negative log-likelihoods for a continuous model}
 \usage{
-calc_neg_log_lik_vect_cont(th_w, x, w, modSpec)
+calc_neg_log_lik_vect_cont(th_w, x, w, modSpec, tfCatVect = NA)
 }
 \arguments{
 \item{x}{The vector of independent variables}
@@ -12,6 +12,8 @@ calc_neg_log_lik_vect_cont(th_w, x, w, modSpec)
 \item{w}{The vector of continuous responses}
 
 \item{modSpec}{The model specification}
+
+\item{tfCatVect}{(Optional) The transformation category vector to transform th_w to a constrained representation}
 
 \item{th_v}{The continuous parameter vector [c,kappa]}
 }

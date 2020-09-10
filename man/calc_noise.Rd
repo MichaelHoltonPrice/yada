@@ -13,6 +13,8 @@ calc_noise(x, noiseSpec, alpha)
 \item{noiseSpec}{The noise specification}
 
 \item{alpha}{The parameter vector}
+
+\item{The}{parameter vector}
 }
 \value{
 sigma(x,alpha), the noise (same length as x)

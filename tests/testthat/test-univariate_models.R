@@ -379,6 +379,7 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
   th_v <- c(th_v,tau)
   for(noiseSpec in c('const','lin_pos_int','hyperb')) {
     modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec,M=M)
+    tfCatVect <- get_univariate_ord_transform_categories(modSpec)
     if(noiseSpec == 'const') {
       th_v <- c(th_v,beta_const)
     } else if(noiseSpec == 'lin_pos_int') {
@@ -388,6 +389,7 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
     } else {
       stop('This should not happen')
     }
+    th_v_bar <- param_constr2unconstr(th_v,tfCatVect)
     g     <- calc_mean_univariate_ord(x,th_v,modSpec)
     gamma <- calc_noise_univariate_ord (x,th_v,modSpec)
 
@@ -400,8 +402,19 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
       calc_neg_log_lik_vect_ord(th_v,x,v,modSpec),
       eta_v
     )
+
+    expect_equal(
+      calc_neg_log_lik_vect_ord(th_v_bar,x,v,modSpec,tfCatVect),
+      eta_v
+    )
+
     expect_equal(
       calc_neg_log_lik_ord(th_v,x,v,modSpec),
+      eta_v1 + eta_v2 + eta_v3
+    )
+
+    expect_equal(
+      calc_neg_log_lik_ord(th_v_bar,x,v,modSpec,tfCatVect),
       eta_v1 + eta_v2 + eta_v3
     )
   }
@@ -421,6 +434,7 @@ meanSpec = 'powLaw'
 th_w <- c_powLaw
 for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec)
+  tfCatVect <- get_univariate_cont_transform_categories(modSpec)
   # Use same noise specifications as for the ordinal case above
   if(noiseSpec == 'const') {
     th_w <- c(th_w,beta_const)
@@ -431,6 +445,8 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   } else {
     stop('This should not happen')
   }
+
+  th_w_bar <- param_constr2unconstr(th_w,tfCatVect)
   h   <- calc_mean_univariate_cont(x,th_w,modSpec)
   psi <- calc_noise_univariate_cont (x,th_w,modSpec)
 
@@ -442,7 +458,17 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   )
 
   expect_equal(
+    calc_neg_log_lik_vect_cont(th_w_bar,x,w,modSpec,tfCatVect),
+    eta_w
+  )
+
+  expect_equal(
     calc_neg_log_lik_cont(th_w,x,w,modSpec),
+    sum(eta_w)
+  )
+
+  expect_equal(
+    calc_neg_log_lik_cont(th_w_bar,x,w,modSpec,tfCatVect),
     sum(eta_w)
   )
 }

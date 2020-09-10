@@ -40,6 +40,7 @@ noiseSpec_int2str <- function(noiseSpec_int) {
 #' @param x The independent variable
 #' @param noiseSpec The noise specification
 #' @param alpha The parameter vector
+#' @param  The parameter vector
 #' @return sigma(x,alpha), the noise (same length as x)
 #' @export
 calc_noise <- function(x,noiseSpec,alpha) {

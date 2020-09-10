@@ -159,10 +159,10 @@ calc_mean_univariate_ord <- function(x,th_v,modSpec) {
 #' @param x The vector of independent variables
 #' @param v The vector of ordinal responses
 #' @param modSpec The model specification
+#' @param tfCatVect (Optional) The transformation category vector to transform th_v to a constrained representation
 #' @return The vector of negative log-likelihoods, which is the same length as x
 #' @export
-calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
-  # TODO: Implement variable transformations
+calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec,tfCatVect=NA) {
   # th_v has ordering [b,tau,beta]
   # eta_v is the negative log-likelihood
   # For optimization, make th_v the first input
@@ -171,6 +171,10 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
   N <- length(x)
   if(N != length(v)) {
     stop('Input vectors x and v do not match in length')
+  }
+
+  if(!all(is.na(tfCatVect))) {
+    th_v <- param_unconstr2constr(th_v,tfCatVect)
   }
 
   g     <- calc_mean_univariate_ord (x,th_v,modSpec)
@@ -207,10 +211,11 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec) {
 #' @param x The vector of independent variables
 #' @param v The vector of ordinal responses
 #' @param modSpec The model specification
+#' @param tfCatVect (Optional) The transformation category vector to transform th_v to a constrained representation
 #' @return The negative log-likelihood
 #' @export
-calc_neg_log_lik_ord <- function(th_v,x,v,modSpec) {
-  return(sum(calc_neg_log_lik_vect_ord(th_v,x,v,modSpec)))
+calc_neg_log_lik_ord <- function(th_v,x,v,modSpec,tfCatVect=NA) {
+  return(sum(calc_neg_log_lik_vect_ord(th_v,x,v,modSpec,tfCatVect)))
 }
 
 
@@ -220,15 +225,18 @@ calc_neg_log_lik_ord <- function(th_v,x,v,modSpec) {
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses
 #' @param modSpec The model specification
+#' @param tfCatVect (Optional) The transformation category vector to transform th_w to a constrained representation
 #' @return The vector of negative log-likelihoods, which is the same length as x
 #' @export
-calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
-  # TODO: Implement variable transformations
-
+calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec,tfCatVect=NA) {
   # Get the number of observations and check that x and w are the same length
   N <- length(x)
   if(N != length(w)) {
     stop('Input vectors x and w do not match in length')
+  }
+
+  if(!all(is.na(tfCatVect))) {
+    th_w <- param_unconstr2constr(th_w,tfCatVect)
   }
 
   h     <- calc_mean_univariate_cont (x,th_w,modSpec)
@@ -242,12 +250,12 @@ calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses
 #' @param modSpec The model specification
+#' @param tfCatVect (Optional) The transformation category vector to transform th_w to a constrained representation
 #' @return The negative log-likelihood
 #' @export
-calc_neg_log_lik_cont <- function(th_w,x,w,modSpec) {
-  return(sum(calc_neg_log_lik_vect_cont(th_w,x,w,modSpec)))
+calc_neg_log_lik_cont <- function(th_w,x,w,modSpec,tfCatVect=NA) {
+  return(sum(calc_neg_log_lik_vect_cont(th_w,x,w,modSpec,tfCatVect)))
 }
-
 
 #' Create simulated data for a univariate continuous model. For x, either the
 #' number of samples (N) and a parameter vector (th_x) must be given, or the

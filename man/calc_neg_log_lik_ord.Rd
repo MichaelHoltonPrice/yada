@@ -4,7 +4,7 @@
 \alias{calc_neg_log_lik_ord}
 \title{Calcuate the negative log-likelihood for an ordinal model}
 \usage{
-calc_neg_log_lik_ord(th_v, x, v, modSpec)
+calc_neg_log_lik_ord(th_v, x, v, modSpec, tfCatVect = NA)
 }
 \arguments{
 \item{th_v}{The ordinal parameter vector [b,tau,beta]}
@@ -14,6 +14,8 @@ calc_neg_log_lik_ord(th_v, x, v, modSpec)
 \item{v}{The vector of ordinal responses}
 
 \item{modSpec}{The model specification}
+
+\item{tfCatVect}{(Optional) The transformation category vector to transform th_v to a constrained representation}
 }
 \value{
 The negative log-likelihood
