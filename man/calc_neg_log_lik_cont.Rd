@@ -13,7 +13,7 @@ calc_neg_log_lik_cont(th_w, x, w, modSpec)
 
 \item{w}{The vector of continuous responses}
 
-\item{modSpec}{The model specification'}
+\item{modSpec}{The model specification}
 }
 \value{
 The negative log-likelihood

@@ -11,7 +11,7 @@ sim_univariate_cont(th_w, modSpec, N = NA, th_x = NA, x = NA)
 \arguments{
 \item{th_w}{The continuous parameter vector [c,kappa]}
 
-\item{modSpec}{The model specification'}
+\item{modSpec}{The model specification}
 
 \item{N}{The number of samples to simulate}
 

@@ -241,7 +241,7 @@ calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec) {
 #' @param th_w The continuous parameter vector [c,kappa]
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses
-#' @param modSpec The model specification'
+#' @param modSpec The model specification
 #' @return The negative log-likelihood
 #' @export
 calc_neg_log_lik_cont <- function(th_w,x,w,modSpec) {
@@ -253,7 +253,7 @@ calc_neg_log_lik_cont <- function(th_w,x,w,modSpec) {
 #' number of samples (N) and a parameter vector (th_x) must be given, or the
 #' full vector (x) must be given.
 #' @param th_w The continuous parameter vector [c,kappa]
-#' @param modSpec The model specification'
+#' @param modSpec The model specification
 #' @param N The number of samples to simulate
 #' @param th_x The parameterization for x
 #' @param x The vector of independent variables
@@ -288,3 +288,58 @@ sim_univariate_cont <- function(th_w,modSpec,N=NA,th_x=NA,x=NA) {
   
   return(list(x=x,w=w))
 }
+
+th_w_constr2unconstr <- function(th_w,modSpec) {
+  if(modSpec$meanSpec != 'powLaw') {
+    stop('For a continuous variable, the meanSpec must be powLaw')
+  }
+
+}
+
+#' Fit a continuous model
+#' @param x The vector of independent variables
+#' @param w The vector of continuous responses
+#' @param modSpec The model specification
+#' @param reqConv Whether to require convergence of the optimization
+#' @return The continuous parameter vector, th_w
+#' @export
+fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
+
+  if(modSpec$meanSpec != 'powLaw') {
+    stop('For a continuous variable, the meanSpec must be powLaw')
+  }
+
+  # Initialize parameters
+  c1 <- 1 # initialize linear in x
+  c2 <- diff(range(w))/diff(range(x))
+  c3 <- min(w)
+  baseScale <- diff(range(w))/2
+
+#  th_w0 <- c(a0,r0,b0,s0)
+#  if(haveKappa) {
+#    kappa0 <- 0.0001
+#    th_w0 <- c(th_w0,kappa0)
+#  }
+
+  if(modSpec$noiseSpec == 'const') {
+    kappa <- c(baseScale)
+  } else if(modSpec$noiseSpec == 'lin_pos_int') {
+    kappa <- c(baseScale,0.0001)
+  } else if(modSpec$noiseSpec == 'lin_pos_int') {
+    kappa <- c(baseScale,baseScale*2,0)
+  }
+  th_w0 <- c(c1,c2,c3,kappa)
+
+  th_w_bar0 <- theta_y_constr2unconstr(th_w0,modSpec)
+  optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(th_w_bar0)))
+  fit <- optim(th_w_bar0,powLawNegLogLik,method='BFGS',control=optimControl,x=x,w=w,noiseSpec=noiseSpec,transformVar=T)
+  if(reqConv && (fit$convergence != 0)) {
+    stop(paste0('fit did not converge. convergence code = ',fit$convergence))
+  }
+
+  th_w <- theta_y_unconstr2constr(fit$par,modSpec)
+
+  return(th_w)
+}
+
+

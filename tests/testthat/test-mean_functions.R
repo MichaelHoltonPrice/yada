@@ -126,3 +126,49 @@ expect_error(
   yada::get_num_var_mean('notAModel'),
   'Unrecognized case, meanSpec = notAModel'
 )
+
+# Test yada::get_mean_transform_matrix
+expect_equal(
+  yada::get_mean_transform_matrix('powLawOrd'),
+  matrix(c(1,1,NA),nrow=1)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix(0),
+  matrix(c(1,1,NA),nrow=1)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix('logOrd'),
+  matrix(NA,nrow=0,ncol=3)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix(1),
+  matrix(NA,nrow=0,ncol=3)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix('linOrd'),
+  matrix(NA,nrow=0,ncol=3)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix(2),
+  matrix(NA,nrow=0,ncol=3)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix('powLaw'),
+  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+)
+
+expect_equal(
+  yada::get_mean_transform_matrix(3),
+  matrix(c(1,1,0,1,2,3,NA,NA,NA),nrow=3)
+)
+
+expect_error(
+  yada::get_mean_transform_matrix('notAModel'),
+  'Unrecognized case, meanSpec = notAModel'
+)
