@@ -422,7 +422,7 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
 
 # test yada::calc_neg_log_lik_vect_cont and yada::calc_neg_log_lik_cont
 c_powLaw <- c(0.45,2,1.2)
-kappa_const       <- c(5)
+kappa_const       <- c(.5)
 kappa_lin_pos_int <- c(0.05,0.01)
 kappa_hyperb      <- c(0.2,0.2,-2)
 
@@ -437,11 +437,11 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   tfCatVect <- get_univariate_cont_transform_categories(modSpec)
   # Use same noise specifications as for the ordinal case above
   if(noiseSpec == 'const') {
-    th_w <- c(th_w,beta_const)
+    th_w <- c(th_w,kappa_const)
   } else if(noiseSpec == 'lin_pos_int') {
-    th_w <- c(th_w,beta_lin_pos_int)
+    th_w <- c(th_w,kappa_lin_pos_int)
   } else if(noiseSpec == 'hyperb') {
-    th_w <- c(th_w,beta_hyperb)
+    th_w <- c(th_w,kappa_hyperb)
   } else {
     stop('This should not happen')
   }
@@ -473,7 +473,7 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   )
 }
 
-# test yada::sim_univariate_cont
+# test yada::sim_univariate_cont and yada::fit_univariate_cont
 # This could be combined with the for loop used to test
 # calc_neg_log_lik_vect_cont and calc_neg_log_lik_cont
 
@@ -481,18 +481,18 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
 th_x <- list(fitType = 'uniform',xmin=0,xmax=80)
 N <- 100
 meanSpec = 'powLaw'
-th_w <- c_powLaw
 set.seed(180190)
 
 for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+  th_w <- c_powLaw
   modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec)
   # Use same noise specifications as for the ordinal case above
   if(noiseSpec == 'const') {
-    th_w <- c(th_w,beta_const)
+    th_w <- c(th_w,kappa_const)
   } else if(noiseSpec == 'lin_pos_int') {
-    th_w <- c(th_w,beta_lin_pos_int)
+    th_w <- c(th_w,kappa_lin_pos_int)
   } else if(noiseSpec == 'hyperb') {
-    th_w <- c(th_w,beta_hyperb)
+    th_w <- c(th_w,kappa_hyperb)
   } else {
     stop('This should not happen')
   }
@@ -516,6 +516,16 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   expect_equal(
     length(sim$w),
     N
+  )
+
+  expect_error(
+    th_w_fit <- fit_univariate_cont(sim$x,sim$w,modSpec),
+    NA
+  )
+
+  expect_equal(
+    length(th_w_fit),
+    length(th_w)
   )
 }
 

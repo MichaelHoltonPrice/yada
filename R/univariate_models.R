@@ -304,7 +304,6 @@ th_w_constr2unconstr <- function(th_w,modSpec) {
 
 }
 
-
 #' For a given model specification of a univariate continuous variable, return a
 #' vector that gives the categories used by param_constr2uncontr and
 #' param_constr2unconstr.
@@ -315,7 +314,6 @@ th_w_constr2unconstr <- function(th_w,modSpec) {
 get_univariate_cont_transform_categories <- function(modSpec) {
   return(c(get_mean_transform_categories(modSpec$meanSpec),get_noise_transform_categories(modSpec$noiseSpec)))
 }
-
 
 #' For a given model specification of a univariate ordinal variable, return a
 #' vector that gives the categories used by param_constr2uncontr and
@@ -360,19 +358,23 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
     kappa <- c(baseScale)
   } else if(modSpec$noiseSpec == 'lin_pos_int') {
     kappa <- c(baseScale,0.0001)
-  } else if(modSpec$noiseSpec == 'lin_pos_int') {
+  } else if(modSpec$noiseSpec == 'hyperb') {
     kappa <- c(baseScale,baseScale*2,0)
+  } else {
+    stop(paste0('Unrecognized noiseSpec, ',modSpec$meanSpec))
   }
-  th_w0 <- c(c1,c2,c3,kappa)
 
-  th_w_bar0 <- theta_y_constr2unconstr(th_w0,modSpec)
+  th_w0 <- c(c1,c2,c3,kappa)
+  tfCatVect <- get_univariate_cont_transform_categories(modSpec)
+  th_w_bar0 <- param_constr2unconstr(th_w0,tfCatVect)
+
   optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(th_w_bar0)))
-  fit <- optim(th_w_bar0,powLawNegLogLik,method='BFGS',control=optimControl,x=x,w=w,noiseSpec=noiseSpec,transformVar=T)
+  fit <- optim(th_w_bar0,calc_neg_log_lik_cont,method='BFGS',control=optimControl,x=x,w=w,modSpec=modSpec,tfCatVect=tfCatVect)
   if(reqConv && (fit$convergence != 0)) {
     stop(paste0('fit did not converge. convergence code = ',fit$convergence))
   }
 
-  th_w <- theta_y_unconstr2constr(fit$par,modSpec)
+  th_w <- param_unconstr2constr(fit$par,tfCatVect)
 
   return(th_w)
 }
