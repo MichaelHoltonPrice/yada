@@ -202,6 +202,14 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec,tfCatVect=NA) {
       eta_v[indm] <- -log(Phi_hi - Phi_lo)
     }
   }
+
+  # Handle x=0 with m=0 if the meanSpec is logOrd
+  if(modSpec$meanSpec == 'logOrd') {
+    ind <- (x == 0) & (v == 0)
+    if(sum(ind) > 0) {
+      eta_v[ind] <- 0
+    }
+  }
   return(eta_v)
 }
 
@@ -242,6 +250,7 @@ calc_neg_log_lik_vect_cont <- function(th_w,x,w,modSpec,tfCatVect=NA) {
   h     <- calc_mean_univariate_cont (x,th_w,modSpec)
   psi   <- calc_noise_univariate_cont(x,th_w,modSpec)
   eta_w <- -dnorm(w,h,psi,log=T)
+
   return(eta_w)
 }
 
@@ -297,11 +306,50 @@ sim_univariate_cont <- function(th_w,modSpec,N=NA,th_x=NA,x=NA) {
   return(list(x=x,w=w))
 }
 
-th_w_constr2unconstr <- function(th_w,modSpec) {
-  if(modSpec$meanSpec != 'powLaw') {
-    stop('For a continuous variable, the meanSpec must be powLaw')
+#' Create simulated data for a univariate ordinal model. For x, either the
+#' number of samples (N) and a parameter vector (th_x) must be given, or the
+#' full vector (x) must be given.
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param modSpec The model specification
+#' @param N The number of samples to simulate
+#' @param th_x The parameterization for x
+#' @param x The vector of independent variables
+#' @return A list object of simulated data containing x, v, and v*
+#' @export
+sim_univariate_ord <- function(th_v,modSpec,N=NA,th_x=NA,x=NA) {
+  # N is the number of simulated observations
+  # th_x parameterizes x. Currently, only a uniform distribution is supported
+  # th_w parameterizes w (given x)
+
+  have_x_model  <- !all(is.na(th_x)) && !is.na(N)
+  have_x_direct <- !all(is.na(x))
+
+  if(have_x_model + have_x_direct != 1) {
+    stop('Either (1) th_x and N should be input or (2) x should be input')
   }
 
+  if(have_x_model) {
+    if(th_x$fitType == 'uniform') {
+      x <- runif(N,th_x$xmin,th_x$xmax)
+    } else {
+      stop('Only uniform currently supported')
+    }
+  } else {
+    N <- length(x)
+  }
+
+  g     <- calc_mean_univariate_ord (x,th_v,modSpec)
+  gamma <- calc_noise_univariate_ord(x,th_v,modSpec)
+
+  vstar <- g + rnorm(N)*gamma
+
+  tau <- th_v[get_var_index_univariate_ord('tau',modSpec)]
+  v <- rep(NA,N)
+  for(n in 1:N) {
+    v[n] <- as.numeric(cut(vstar[n],c(-Inf,tau,Inf))) - 1 # The ordinal observation
+  }
+  
+  return(list(x=x,v=v,vstar=vstar))
 }
 
 #' For a given model specification of a univariate continuous variable, return a
@@ -329,7 +377,7 @@ get_univariate_ord_transform_categories <- function(modSpec) {
   return(c(catVectMean,catVectTau,catVectNoise))
 }
 
-#' Fit a continuous model
+#' Fit a univariate continuous model
 #' @param x The vector of independent variables
 #' @param w The vector of continuous responses
 #' @param modSpec The model specification
@@ -337,7 +385,6 @@ get_univariate_ord_transform_categories <- function(modSpec) {
 #' @return The continuous parameter vector, th_w
 #' @export
 fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
-
   if(modSpec$meanSpec != 'powLaw') {
     stop('For a continuous variable, the meanSpec must be powLaw')
   }
@@ -348,12 +395,6 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
   c3 <- min(w)
   baseScale <- diff(range(w))/2
 
-#  th_w0 <- c(a0,r0,b0,s0)
-#  if(haveKappa) {
-#    kappa0 <- 0.0001
-#    th_w0 <- c(th_w0,kappa0)
-#  }
-
   if(modSpec$noiseSpec == 'const') {
     kappa <- c(baseScale)
   } else if(modSpec$noiseSpec == 'lin_pos_int') {
@@ -361,7 +402,7 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
   } else if(modSpec$noiseSpec == 'hyperb') {
     kappa <- c(baseScale,baseScale*2,0)
   } else {
-    stop(paste0('Unrecognized noiseSpec, ',modSpec$meanSpec))
+    stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
   }
 
   th_w0 <- c(c1,c2,c3,kappa)
@@ -379,4 +420,143 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
   return(th_w)
 }
 
+#' Initialize the parameter vector for a univariate ordinal model
+#' @param x The vector of independent variables
+#' @param v The vector of ordinal responses
+#' @param modSpec The model specification
+#' @return An initialization for the ordinal parameter vector, th_v0
+#' @export
+init_univariate_ord <- function(x,v,modSpec) {
+  if(modSpec$meanSpec == 'powLawOrd') {
+    gmin <- min(x)
+    gmax <- max(x)
+    b0 <- 1
+  } else if(modSpec$meanSpec == 'logOrd') {
+    gmin <- min(log(x[x!=0]))
+    gmax <- max(log(x[x!=0]))
+    b0 <- c()
+  } else if(modSpec$meanSpec == 'linOrd') {
+    gmin <- min(x)
+    gmax <- max(x)
+    b0 <- c()
+  } else {
+    stop(paste0('Unrecognized meanSpec, ',modSpec$meanSpec))
+  }
+  baseScale <- gmax - gmin
+  tau0 <- gmin + baseScale / (modSpec$M+1) * (1:modSpec$M)
 
+  if(modSpec$noiseSpec == 'const') {
+    beta0 <- baseScale
+  } else if(modSpec$noiseSpec == 'lin_pos_int') {
+    beta0 <- c(baseScale,0.001)
+  } else if(modSpec$noiseSpec == 'hyperb') {
+    beta0 <- c(0.001,baseScale,baseScale-0.001)
+  } else {
+    stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
+  }
+
+  th_v0 <- c(b0,tau0,beta0)
+  return(th_v0)
+}
+
+#' Fit a univariate ordinal model
+#' @param x The vector of independent variables
+#' @param v The vector of ordinal responses
+#' @param modSpec The model specification
+#' @param reqConv Whether to require convergence of the optimization
+#' @return The ordinal parameter vector, th_v
+#' @export
+fit_univariate_ord <- function(x,v,modSpec,reqConv=T) {
+  if(modSpec$meanSpec == 'powLawOrd') {
+    gmin <- min(x)
+    gmax <- max(x)
+    b0 <- 1
+  } else if(modSpec$meanSpec == 'logOrd') {
+    gmin <- min(log(x[x!=0]))
+    gmax <- max(log(x[x!=0]))
+    b0 <- c()
+  } else if(modSpec$meanSpec == 'linOrd') {
+    gmin <- min(x)
+    gmax <- max(x)
+    b0 <- c()
+  } else {
+    stop(paste0('Unrecognized meanSpec, ',modSpec$meanSpec))
+  }
+  baseScale <- gmax - gmin
+  tau0 <- gmin + baseScale / (modSpec$M+1) * (1:modSpec$M)
+
+  if(modSpec$noiseSpec == 'const') {
+    beta0 <- baseScale
+  } else if(modSpec$noiseSpec == 'lin_pos_int') {
+    beta0 <- c(baseScale,0.001)
+  } else if(modSpec$noiseSpec == 'hyperb') {
+    beta0 <- c(0.001,baseScale,baseScale-0.001)
+  } else {
+    stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
+  }
+
+  th_v0 <- c(b0,tau0,beta0)
+  tfCatVect <- get_univariate_ord_transform_categories(modSpec)
+  th_v_bar0 <- param_constr2unconstr(th_v0,tfCatVect)
+
+  optimResult <- yada_tailored_optim(calc_neg_log_lik_ord,th_v_bar0,x=x,v=v,modSpec=modSpec,tfCatVect=tfCatVect)
+  fit <- optimResult$fitBFGS
+  if(reqConv && (fit$convergence != 0)) {
+    stop(paste0('fit did not converge. convergence code = ',fit$convergence))
+  }
+
+  th_v <- param_unconstr2constr(fit$par,tfCatVect)
+  return(th_v)
+}
+
+#' Calculate the probability of measuring the response m as a function of x for
+#' a univariate ordinal model
+#'
+#' @param x The vector of independent variables
+#' @param th_v The ordinal parameter vector [b,tau,beta]
+#' @param m The ordinal response value
+#' @param modSpec The model specification
+#' @return The vector for probabilities, which has the same length as x
+#' @export
+calc_q <- function(x,th_v,m,modSpec) {
+  return(exp(-calc_neg_log_lik_vect_ord(th_v,x,rep(m,length(x)),modSpec)))
+}
+
+#' Calculate the probability of the ordinal responses m = 0...M by binning
+#' x-values and calculating the proportion of m-values in each bin.
+#'
+#' @param x The vector of independent variables
+#' @param v The vector of responses (m-values)
+#' @param binBounds (Optional) The bounds to use for binning. If not given, 20 evenly spaced bins on the interval min(x) to max(x) are used.
+#' @return A list with the bin centers, bin counts, and bin proportions
+#' @export
+calc_bin_prob <- function(x,v,binBounds=NA) {
+  if(all(is.na(binBounds))) {
+    binBounds <- seq(min(x),max(x),len=21)
+  }
+  numBins <- length(binBounds) - 1
+  
+  numCat <- length(unique(v)) # number of categories
+  binCounts <- matrix(NA,numBins,numCat)
+  binCenters <- (binBounds[1:numBins] + binBounds[2:(numBins+1)])/2
+
+  for(b in 1:numBins) {
+    if(b < numBins) {
+      ind_b <- binBounds[b] <= x & x <  binBounds[b+1]
+    } else {
+      ind_b <- binBounds[b] <= x & x <= binBounds[b+1]
+    }
+    xb <- x[ind_b]
+    vb <- v[ind_b]
+    for(m in 0:(numCat-1)) {
+      binCounts[b,m+1] <- sum(vb == m)
+    }
+  }
+
+  binProp <- matrix(NA,numBins,numCat) # bin proportions
+  for(b in 1:numBins) {
+    binProp[b,] <- binCounts[b,] / sum(binCounts[b,])
+  }
+
+  return(list(binCenters=binCenters,binCounts=binCounts,binProp=binProp))
+}
