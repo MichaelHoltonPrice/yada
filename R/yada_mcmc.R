@@ -152,7 +152,7 @@ yada_tailored_optim <- function(neg_log_lik,theta0,...) {
 
   # Refine with a call to optim
   optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(theta_best)))
-  fitBFGS <- optim(theta_best,calc_neg_log_lik_ord,method='BFGS',control=optimControl,...)
+  fitBFGS <- optim(theta_best,neg_log_lik,method='BFGS',control=optimControl,...)
   
   return(list(eta_best_mcmc=eta_best,theta_best_mcmc=theta_best,etaVect=etaVect,fitBFGS=fitBFGS))
 }
