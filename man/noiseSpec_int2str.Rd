@@ -20,7 +20,6 @@ noiseSpec_str The noise specification as a string
 int	str
 0	const
 1	lin_pos_int
-2	hyperb
 }
 \examples{
 noiseSpec_int2str(0)

@@ -7,7 +7,6 @@
 #' int	str
 #' 0	const
 #' 1	lin_pos_int
-#' 2	hyperb
 #' 
 #' @param noiseSpec_int The noise specification as an integer
 #' @return noiseSpec_str The noise specification as a string
@@ -26,8 +25,6 @@ noiseSpec_int2str <- function(noiseSpec_int) {
     noiseSpec_str <- 'const'
   } else if(noiseSpec_int == 1) {
     noiseSpec_str <- 'lin_pos_int'
-  } else if(noiseSpec_int == 2) {
-    noiseSpec_str <- 'hyperb'
   } else {
     stop(paste0('Unrecognized case, noiseSpec_int = ',noiseSpec_int))
   }
@@ -52,8 +49,6 @@ calc_noise <- function(x,noiseSpec,alpha) {
     return(rep(alpha[1],length(x)))
   } else if(noiseSpec == 'lin_pos_int') {
     return(alpha[1]*(1 + x*alpha[2]))
-  } else if(noiseSpec == 'hyperb') {
-    return((alpha[1]/2) * (sqrt((x + alpha[3]/alpha[1])^2 + 4*alpha[2]*(alpha[2]-alpha[3])/(alpha[1]^2)) + x + alpha[3]/alpha[1]))
   } else {
     stop(paste0('Unrecognized case, noiseSpec = ',noiseSpec))
   }
@@ -73,8 +68,6 @@ get_num_var_noise <- function(noiseSpec) {
     return(1)
   } else if(noiseSpec == 'lin_pos_int') {
     return(2)
-  } else if(noiseSpec == 'hyperb') {
-    return(3)
   } else {
     stop(paste0('Unrecognized case, noiseSpec = ',noiseSpec))
   }
@@ -95,8 +88,6 @@ get_noise_transform_categories <- function(noiseSpec) {
     return(1)
   } else if(noiseSpec == 'lin_pos_int') {
     return(c(1,1))
-  } else if(noiseSpec == 'hyperb') {
-    return(c(1,1,0))
   } else {
     stop(paste0('Unrecognized case, noiseSpec = ',noiseSpec))
   }

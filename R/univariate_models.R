@@ -399,8 +399,6 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
     kappa <- c(baseScale)
   } else if(modSpec$noiseSpec == 'lin_pos_int') {
     kappa <- c(baseScale,0.0001)
-  } else if(modSpec$noiseSpec == 'hyperb') {
-    kappa <- c(baseScale,baseScale*2,0)
   } else {
     stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
   }
@@ -449,8 +447,6 @@ init_univariate_ord <- function(x,v,modSpec) {
     beta0 <- baseScale
   } else if(modSpec$noiseSpec == 'lin_pos_int') {
     beta0 <- c(baseScale,0.001)
-  } else if(modSpec$noiseSpec == 'hyperb') {
-    beta0 <- c(0.001,baseScale,baseScale-0.001)
   } else {
     stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
   }
@@ -467,35 +463,8 @@ init_univariate_ord <- function(x,v,modSpec) {
 #' @return The ordinal parameter vector, th_v
 #' @export
 fit_univariate_ord <- function(x,v,modSpec,reqConv=T) {
-  if(modSpec$meanSpec == 'powLawOrd') {
-    gmin <- min(x)
-    gmax <- max(x)
-    b0 <- 1
-  } else if(modSpec$meanSpec == 'logOrd') {
-    gmin <- min(log(x[x!=0]))
-    gmax <- max(log(x[x!=0]))
-    b0 <- c()
-  } else if(modSpec$meanSpec == 'linOrd') {
-    gmin <- min(x)
-    gmax <- max(x)
-    b0 <- c()
-  } else {
-    stop(paste0('Unrecognized meanSpec, ',modSpec$meanSpec))
-  }
-  baseScale <- gmax - gmin
-  tau0 <- gmin + baseScale / (modSpec$M+1) * (1:modSpec$M)
+  th_v0 <- init_univariate_ord(x,v,modSpec)
 
-  if(modSpec$noiseSpec == 'const') {
-    beta0 <- baseScale
-  } else if(modSpec$noiseSpec == 'lin_pos_int') {
-    beta0 <- c(baseScale,0.001)
-  } else if(modSpec$noiseSpec == 'hyperb') {
-    beta0 <- c(0.001,baseScale,baseScale-0.001)
-  } else {
-    stop(paste0('Unrecognized noiseSpec, ',modSpec$noiseSpec))
-  }
-
-  th_v0 <- c(b0,tau0,beta0)
   tfCatVect <- get_univariate_ord_transform_categories(modSpec)
   th_v_bar0 <- param_constr2unconstr(th_v0,tfCatVect)
 

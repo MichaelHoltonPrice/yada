@@ -89,8 +89,8 @@ yada_tailored_optim <- function(neg_log_lik,theta0,...) {
   bigRescale <- 10
   smlRescale <- 2
   tempMax <- 1e2
-  tempMin <- 1e-4
-  tempRatio <- 0.75
+  tempMin <- 1e0
+  tempRatio <- 0.95
   numTemp <- 1 + ceiling(log(tempMin/tempMax)/log(tempRatio)) # final temp likely slightly smaller than tempMin
   tempVect <- tempMax*tempRatio^(0:(numTemp-1))
   

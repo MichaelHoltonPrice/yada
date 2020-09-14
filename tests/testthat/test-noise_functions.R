@@ -9,11 +9,6 @@ expect_equal(
   'lin_pos_int'
 )
 
-expect_equal(
-  yada::noiseSpec_int2str(2),
-  'hyperb'
-)
-
 expect_error(
   yada::noiseSpec_int2str(c(0,1)),
   'The input, noiseSpec_int, does not have length 1'
@@ -50,16 +45,6 @@ expect_equal(
   0.25*(1 + c(1,1.5)*0.10)
 )
 
-expect_equal(
-  yada::calc_noise(c(1,1.5),'hyperb',c(0.3,0.20,-.4)),
-  (0.3/2)*(sqrt((c(1,1.5)-.4/.3)^2 + 4*.20*(.20+.4)/(.3^2)) + c(1,1.5)-.4/.3)
-)
-
-expect_equal(
-  yada::calc_noise(c(1,1.5),2,c(0.3,0.20,-.4)),
-  (0.3/2)*(sqrt((c(1,1.5)-.4/.3)^2 + 4*.20*(.20+.4)/(.3^2)) + c(1,1.5)-.4/.3)
-)
-
 expect_error(
   yada::calc_noise(c(1,1.5),'notAModel',c(0.5,0.2,-.4)),
   'Unrecognized case, noiseSpec = notAModel'
@@ -86,16 +71,6 @@ expect_equal(
   2
 )
 
-expect_equal(
-  yada::get_num_var_noise('hyperb'),
-  3
-)
-
-expect_equal(
-  yada::get_num_var_noise(2),
-  3
-)
-
 expect_error(
   yada::get_num_var_noise('notAModel'),
   'Unrecognized case, noiseSpec = notAModel'
@@ -120,16 +95,6 @@ expect_equal(
 expect_equal(
   yada::get_noise_transform_categories(1),
   c(1,1)
-)
-
-expect_equal(
-  yada::get_noise_transform_categories('hyperb'),
-  c(1,1,0)
-)
-
-expect_equal(
-  yada::get_noise_transform_categories(2),
-  c(1,1,0)
 )
 
 expect_error(

@@ -34,16 +34,6 @@ expect_equal(
   2
 )
 
-expect_equal(
-  yada::get_num_var_univariate_cont('kappa',list(noiseSpec='hyperb')),
-  3
-)
-
-expect_equal(
-  yada::get_num_var_univariate_cont('kappa',list(noiseSpec=2)),
-  3
-)
-
 expect_error(
   yada::get_num_var_univariate_cont('kappa',list(noiseSpec='notAModel')),
   'Unrecognized case, noiseSpec = notAModel'
@@ -95,16 +85,6 @@ expect_equal(
   2
 )
 
-expect_equal(
-  yada::get_num_var_univariate_ord('beta',list(noiseSpec='hyperb')),
-  3
-)
-
-expect_equal(
-  yada::get_num_var_univariate_ord('beta',list(noiseSpec=2)),
-  3
-)
-
 expect_error(
   yada::get_num_var_univariate_ord('beta',list(noiseSpec='notAModel')),
   'Unrecognized case, noiseSpec = notAModel'
@@ -144,16 +124,6 @@ expect_equal(
 expect_equal(
   yada::get_var_index_univariate_cont('kappa',list(meanSpec='powLaw',noiseSpec=1)),
   4:5
-)
-
-expect_equal(
-  yada::get_var_index_univariate_cont('kappa',list(meanSpec='powLaw',noiseSpec='hyperb')),
-  4:6
-)
-
-expect_equal(
-  yada::get_var_index_univariate_cont('kappa',list(meanSpec='powLaw',noiseSpec=2)),
-  4:6
 )
 
 expect_error(
@@ -243,16 +213,6 @@ expect_equal(
 )
 
 expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='powLawOrd',noiseSpec='hyperb',M=3)),
-  5:7
-)
-
-expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='powLawOrd',noiseSpec=2,M=3)),
-  5:7
-)
-
-expect_equal(
   yada::get_var_index_univariate_ord('beta',list(meanSpec='logOrd',noiseSpec='const',M=3)),
   4:4
 )
@@ -273,16 +233,6 @@ expect_equal(
 )
 
 expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='logOrd',noiseSpec='hyperb',M=3)),
-  4:6
-)
-
-expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='logOrd',noiseSpec=2,M=3)),
-  4:6
-)
-
-expect_equal(
   yada::get_var_index_univariate_ord('beta',list(meanSpec='linOrd',noiseSpec='const',M=3)),
   4:4
 )
@@ -300,16 +250,6 @@ expect_equal(
 expect_equal(
   yada::get_var_index_univariate_ord('beta',list(meanSpec='linOrd',noiseSpec=1,M=3)),
   4:5
-)
-
-expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='linOrd',noiseSpec='hyperb',M=3)),
-  4:6
-)
-
-expect_equal(
-  yada::get_var_index_univariate_ord('beta',list(meanSpec='linOrd',noiseSpec=2,M=3)),
-  4:6
 )
 
 expect_error(
@@ -354,14 +294,14 @@ expect_equal(
 )
 
 # test yada::calc_neg_log_lik_vect_ord and yada::calc_neg_log_lik_ord
-b_powLawOrd <- 0.90
-tau1        <- 11
-tau2        <- 15
-tau         <- c(tau1,tau2)
-M           <- length(tau)
-beta_const       <- c(5)
-beta_lin_pos_int <- c(0.05,0.01)
-beta_hyperb      <- c(0.05,0.2,-2)
+b_powLawOrd      <- 0.4
+tau1             <- 2.5
+tau2             <- 4.5
+tau              <- c(tau1,tau2)
+M                <- 2
+beta_const       <- c(.5)
+beta_lin_pos_int <- c(.4, (.6/.4 - 1)/80)
+linOrdRescale <- 10
 
 # Directly calculate the log likelihood for all combinations of the mean and
 # noise specifications
@@ -371,31 +311,41 @@ x3 <- 30
 x <- c(x1,x2,x3)
 v <- c(0,1,2)
 for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
-  for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+  for(noiseSpec in c('const','lin_pos_int')) {
     if(meanSpec == 'powLawOrd') {
-      th_v <- b_powLawOrd
+      th_v <- c(b_powLawOrd,tau)
+    } else if(meanSpec == 'logOrd') {
+      th_v <- tau
+    } else if(meanSpec == 'linOrd') {
+      th_v <- tau*linOrdRescale
     } else {
-      th_v <- c()
+      stop('This should not happen')
     }
-    th_v <- c(th_v,tau)
     modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec,M=M)
     tfCatVect <- get_univariate_ord_transform_categories(modSpec)
     if(noiseSpec == 'const') {
       th_v <- c(th_v,beta_const)
     } else if(noiseSpec == 'lin_pos_int') {
       th_v <- c(th_v,beta_lin_pos_int)
-    } else if(noiseSpec == 'hyperb') {
-      th_v <- c(th_v,beta_hyperb)
     } else {
       stop('This should not happen')
     }
+
+    if(meanSpec == 'linOrd') {
+      ind_beta <- get_var_index_univariate_ord('beta',modSpec)
+      th_v[ind_beta] <- th_v[ind_beta]*linOrdRescale
+    }
+
+    # tau is modified for the linOrd case, so extract ehe actual tau used
+    tau_calc <- th_v[get_var_index_univariate_ord('tau',modSpec)]
+
     th_v_bar <- param_constr2unconstr(th_v,tfCatVect)
     g     <- calc_mean_univariate_ord(x,th_v,modSpec)
     gamma <- calc_noise_univariate_ord (x,th_v,modSpec)
 
-    eta_v1 <- -log(pnorm( (tau1 - g[1])/gamma[1] ))
-    eta_v2 <- -log( pnorm( (tau2 - g[2])/gamma[2] ) - pnorm( (tau1 - g[2])/gamma[2] ))
-    eta_v3 <- -log( 1 - pnorm( (tau2 - g[3])/gamma[3] ))
+    eta_v1 <- -log(pnorm( (tau_calc[1] - g[1])/gamma[1] ))
+    eta_v2 <- -log( pnorm( (tau_calc[2] - g[2])/gamma[2] ) - pnorm( (tau_calc[1] - g[2])/gamma[2] ))
+    eta_v3 <- -log( 1 - pnorm( (tau_calc[2] - g[3])/gamma[3] ))
     eta_v  <- c(eta_v1,eta_v2,eta_v3)
 
     expect_equal(
@@ -424,14 +374,13 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
 c_powLaw <- c(0.45,2,1.2)
 kappa_const       <- c(.5)
 kappa_lin_pos_int <- c(0.05,0.01)
-kappa_hyperb      <- c(0.05,0.2,-2)
 
 # Directly calculate the log likelihood for all combinations of the mean and
 # noise specifications
 x <- c(1.3,2.1)
 w <- c(.7,3.8)
 meanSpec = 'powLaw'
-for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+for(noiseSpec in c('const','lin_pos_int')) {
   th_w <- c_powLaw
   modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec)
   tfCatVect <- get_univariate_cont_transform_categories(modSpec)
@@ -440,8 +389,6 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
     th_w <- c(th_w,kappa_const)
   } else if(noiseSpec == 'lin_pos_int') {
     th_w <- c(th_w,kappa_lin_pos_int)
-  } else if(noiseSpec == 'hyperb') {
-    th_w <- c(th_w,kappa_hyperb)
   } else {
     stop('This should not happen')
   }
@@ -473,40 +420,28 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
   )
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-# test yada::sim_univariate_cont, yada::init_univariate_ord, and yada::fit_univariate_cont
+# test yada::sim_univariate_ord, yada::init_univariate_ord, and yada::fit_univariate_cont
 # A uniform prior on x on the interval 0 to 80
 th_x <- list(fitType = 'uniform',xmin=0,xmax=80)
 N <- 100
 set.seed(180190)
-
 for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
-  for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+  for(noiseSpec in c('const','lin_pos_int')) {
     if(meanSpec == 'powLawOrd') {
-      th_v <- b_powLawOrd
+      th_v <- c(b_powLawOrd,tau)
+    } else if(meanSpec == 'logOrd') {
+      th_v <- tau
+    } else if(meanSpec == 'linOrd') {
+      th_v <- tau*linOrdRescale
     } else {
-      th_v <- c()
+      stop('This should not happen')
     }
-    th_v <- c(th_v,tau)
     modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec,M=M)
     tfCatVect <- get_univariate_ord_transform_categories(modSpec)
     if(noiseSpec == 'const') {
       th_v <- c(th_v,beta_const)
     } else if(noiseSpec == 'lin_pos_int') {
       th_v <- c(th_v,beta_lin_pos_int)
-    } else if(noiseSpec == 'hyperb') {
-      th_v <- c(th_v,beta_hyperb)
     } else {
       stop('This should not happen')
     }
@@ -596,7 +531,7 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
 # test yada::sim_univariate_cont and yada::fit_univariate_cont
 meanSpec = 'powLaw'
 
-for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+for(noiseSpec in c('const','lin_pos_int')) {
   th_w <- c_powLaw
   modSpec <- list(meanSpec=meanSpec,noiseSpec=noiseSpec)
   # Use same noise specifications as for the ordinal case above
@@ -604,8 +539,6 @@ for(noiseSpec in c('const','lin_pos_int','hyperb')) {
     th_w <- c(th_w,kappa_const)
   } else if(noiseSpec == 'lin_pos_int') {
     th_w <- c(th_w,kappa_lin_pos_int)
-  } else if(noiseSpec == 'hyperb') {
-    th_w <- c(th_w,kappa_hyperb)
   } else {
     stop('This should not happen')
   }
@@ -672,11 +605,6 @@ expect_equal(
   c(1,1,0,1,1)
 )
 
-expect_equal(
-  yada::get_univariate_cont_transform_categories(list(meanSpec='powLaw',noiseSpec='hyperb')),
-  c(1,1,0,1,1,0)
-)
-
 # Test yada::get_univariate_ord_transform_matrix
 for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
   if(meanSpec == 'powLawOrd') {
@@ -690,13 +618,11 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
   }
   for(M in 1:3) {
     catVectTau <- c(0,rep(3,M-1))
-    for(noiseSpec in c('const','lin_pos_int','hyperb')) {
+    for(noiseSpec in c('const','lin_pos_int')) {
       if(noiseSpec == 'const') {
         catVectNoise <- 1
       } else if(noiseSpec == 'lin_pos_int') {
         catVectNoise <- c(1,1)
-      } else if(noiseSpec == 'hyperb') {
-        catVectNoise <- c(1,1,0)
       } else {
         stop('This should not happen')
       }
