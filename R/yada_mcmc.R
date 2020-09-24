@@ -93,14 +93,14 @@ yada_tailored_annealing <- function(neg_log_lik,theta0,...) {
   scale0 <- 1e-6 # The baseline scale to start with
   bigRescale <- 10
   smlRescale <- 2
-  tempMax <- 1e2
-  tempMin <- 1e0
-  tempRatio <- 0.95
+  tempMax <- 1e+2
+  tempMin <- 1e-1
+  tempRatio <- 0.75
   numTemp <- 1 + ceiling(log(tempMin/tempMax)/log(tempRatio)) # final temp likely slightly smaller than tempMin
   tempVect <- tempMax*tempRatio^(0:(numTemp-1))
   
   numSampTitrate <- 100 # For finding the scale
-  numSamp <- 1000 # For sampling at a temperature
+  numSamp <- 5000 # For sampling at a temperature
 
   # The target acceptance ratio
   alphaTarget <- 0.23 # motivated by Gelman et al. 1996 -- Efficient Metropolis Jumping Rules
@@ -155,5 +155,5 @@ yada_tailored_annealing <- function(neg_log_lik,theta0,...) {
     etaVect <- c(etaVect,samp$etaVect)
   }
 
-  return(list(eta_bestc=eta_best,theta_best=theta_best,etaVect=etaVect))
+  return(list(eta_best=eta_best,theta_best=theta_best,etaVect=etaVect))
 }

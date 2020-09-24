@@ -71,5 +71,5 @@ expect_equal(
 
 expect_equal(
   length(optimOut$etaVect),
-  91000
+  130000
 )

@@ -385,6 +385,11 @@ get_univariate_ord_transform_categories <- function(modSpec) {
 #' @return The continuous parameter vector, th_w
 #' @export
 fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
+  # Handle possible missing observations without throwing an error or warning
+  ind_bad <- is.na(x) | is.na(w)
+  x <- x[!ind_bad]
+  w <- w[!ind_bad]
+
   if(modSpec$meanSpec != 'powLaw') {
     stop('For a continuous variable, the meanSpec must be powLaw')
   }
