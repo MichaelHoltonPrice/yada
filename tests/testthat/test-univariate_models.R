@@ -420,7 +420,7 @@ for(noiseSpec in c('const','lin_pos_int')) {
   )
 }
 
-# test yada::sim_univariate_ord, yada::init_univariate_ord, and yada::fit_univariate_cont
+# test yada::sim_univariate_ord, yada::init_univariate_ord, and yada::fit_univariate_ord
 # A uniform prior on x on the interval 0 to 80
 th_x <- list(fitType = 'uniform',xmin=0,xmax=80)
 N <- 100
@@ -512,7 +512,37 @@ for(meanSpec in c('powLawOrd','logOrd','linOrd')) {
     )
 
     expect_error(
+      th_v0 <- init_univariate_ord(sim$x,sim$v,modSpec,anneal=F),
+      NA
+    )
+
+    expect_equal(
+      any(is.na(th_v0)),
+      F
+    )
+
+    expect_equal(
+      length(th_v0),
+      length(th_v)
+    )
+
+    expect_error(
       th_v_fit <- fit_univariate_ord(sim$x,sim$v,modSpec),
+      NA
+    )
+
+    expect_equal(
+      any(is.na(th_v_fit)),
+      F
+    )
+
+    expect_equal(
+      length(th_v_fit),
+      length(th_v)
+    )
+
+    expect_error(
+      th_v_fit <- fit_univariate_ord(sim$x,sim$v,modSpec,anneal=F),
       NA
     )
 

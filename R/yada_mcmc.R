@@ -60,25 +60,30 @@ yada_sample_mcmc <- function(neg_log_lik,theta0,numSamp,temp,propScale,...) {
   return(output)
 }
 
-#' A tailored optimization that works well for univariate models. While this
-#' tailored optimzation usually rrequires more computations of the negative
-#' log-likelihood function compared to other algorithms (e.g., directly calling
+#  # Refine with a call to optim
+#  optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(theta_best)))
+#  fitBFGS <- optim(theta_best,neg_log_lik,method='BFGS',control=optimControl,...)
+
+#' A tailored optimization using simulated annealing that works well for
+#' univariate models. The annealing can be used by itself for optimization or
+#' to initialize another optimization algorithm. While this optimization via
+#' annealing usually requires more computations of the negative log-likelihood
+#' function compared to other algorithms (e.g., directly calling
 #' stats::optim with method='BFGS'), experience has shown that other algorithms
 #' do not always find the minimum of the negative log-likelihood. Put slightly
 #' differently, this tailored algorithm trades off number of computations for
 #' improved robustness, which is likely almost always a trade-off the user
-#' desires. The optimization consists of two steps. First, simulated annealing
-#' is used, with an initial step at each temperature to set the standard
-#' deviation of the (normal) proposal distribution to achieve an acceptance
-#' ratio of about 0.23. Second, stats::optim is called using method='BFGS' to
-#' refine the solution found by the simulated annealing.
+#' desires. The simulated annealing is adaptive. In particular, with each
+#' change in temperature (and prior to annealing at the first temperature)
+#' sampling is separately done to set the standard deviation of the (normal)
+#' proposal distribution to achieve an acceptance ratio of about 0.23.
 #'
 #' @param neg_log_lik The function for the negative log-likelihood
 #' @param theta0 The initial value of the parameter vector
 #' @param ... Variables required by neg_log_lik
 #' @return A list with sampling information and optimization results
 #' @export
-yada_tailored_optim <- function(neg_log_lik,theta0,...) {
+yada_tailored_annealing <- function(neg_log_lik,theta0,...) {
   eta0 <- neg_log_lik(theta0,...)
   if(!is.finite(eta0)) {
     stop('The negative log-likelihood is not finite for the input initialization vector theta0')
@@ -150,9 +155,5 @@ yada_tailored_optim <- function(neg_log_lik,theta0,...) {
     etaVect <- c(etaVect,samp$etaVect)
   }
 
-  # Refine with a call to optim
-  optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(theta_best)))
-  fitBFGS <- optim(theta_best,neg_log_lik,method='BFGS',control=optimControl,...)
-  
-  return(list(eta_best_mcmc=eta_best,theta_best_mcmc=theta_best,etaVect=etaVect,fitBFGS=fitBFGS))
+  return(list(eta_bestc=eta_best,theta_best=theta_best,etaVect=etaVect))
 }

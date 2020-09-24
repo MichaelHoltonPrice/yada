@@ -4,7 +4,7 @@
 \alias{fit_univariate_ord}
 \title{Fit a univariate ordinal model}
 \usage{
-fit_univariate_ord(x, v, modSpec, reqConv = T)
+fit_univariate_ord(x, v, modSpec, anneal = T, reqConv = T)
 }
 \arguments{
 \item{x}{The vector of independent variables}
@@ -12,6 +12,8 @@ fit_univariate_ord(x, v, modSpec, reqConv = T)
 \item{v}{The vector of ordinal responses}
 
 \item{modSpec}{The model specification}
+
+\item{anneal}{Whether or not to refine the initialization by annealing}
 
 \item{reqConv}{Whether to require convergence of the optimization}
 }

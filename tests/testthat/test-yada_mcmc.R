@@ -53,28 +53,23 @@ expect_equal(
 th_x <- list(fitType = 'uniform',xmin=0,xmax=80)
 N <- 100
 
-# Test yada::yada_sample_mcmc
+# Test yada::yada_tailored_annealing
 expect_error(
-  optimOut <- yada_tailored_optim(neg_dnorm,1,mean=-.5,sd=1.5,log=T),
+  optimOut <- yada_tailored_annealing(neg_dnorm,1,mean=-.5,sd=1.5,log=T),
   NA
 )
 
 expect_equal(
-  length(optimOut$eta_best_mcmc),
+  length(optimOut$eta_best),
   1
 )
 
 expect_equal(
-  length(optimOut$theta_best_mcmc),
+  length(optimOut$theta_best),
   1
 )
 
 expect_equal(
   length(optimOut$etaVect),
   91000
-)
-
-expect_equal(
-  length(optimOut$fitBFGS$par), # optimOut$fitBFGS$par should reliably equal -0.5, but optimization performance is tested in the integration tests
-  1
 )

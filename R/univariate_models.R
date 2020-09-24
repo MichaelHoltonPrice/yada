@@ -422,9 +422,10 @@ fit_univariate_cont <- function(x,w,modSpec,reqConv=T) {
 #' @param x The vector of independent variables
 #' @param v The vector of ordinal responses
 #' @param modSpec The model specification
+#' @param anneal Whether or not to refine the initialization by annealing
 #' @return An initialization for the ordinal parameter vector, th_v0
 #' @export
-init_univariate_ord <- function(x,v,modSpec) {
+init_univariate_ord <- function(x,v,modSpec,anneal=T) {
   if(modSpec$meanSpec == 'powLawOrd') {
     gmin <- min(x)
     gmax <- max(x)
@@ -452,6 +453,13 @@ init_univariate_ord <- function(x,v,modSpec) {
   }
 
   th_v0 <- c(b0,tau0,beta0)
+
+  if(anneal) {
+    tfCatVect <- get_univariate_ord_transform_categories(modSpec)
+    th_v_bar0 <- param_constr2unconstr(th_v0,tfCatVect)
+    annealOutput <- yada_tailored_annealing(calc_neg_log_lik_ord,th_v_bar0,x=x,v=v,modSpec=modSpec,tfCatVect=tfCatVect)
+    th_v0 <- param_unconstr2constr(annealOutput$theta_best,tfCatVect)
+  }
   return(th_v0)
 }
 
@@ -459,22 +467,25 @@ init_univariate_ord <- function(x,v,modSpec) {
 #' @param x The vector of independent variables
 #' @param v The vector of ordinal responses
 #' @param modSpec The model specification
+#' @param anneal Whether or not to refine the initialization by annealing
 #' @param reqConv Whether to require convergence of the optimization
 #' @return The ordinal parameter vector, th_v
 #' @export
-fit_univariate_ord <- function(x,v,modSpec,reqConv=T) {
-  th_v0 <- init_univariate_ord(x,v,modSpec)
+fit_univariate_ord <- function(x,v,modSpec,anneal=T,reqConv=T) {
+  th_v0 <- init_univariate_ord(x,v,modSpec,anneal=anneal)
 
   tfCatVect <- get_univariate_ord_transform_categories(modSpec)
   th_v_bar0 <- param_constr2unconstr(th_v0,tfCatVect)
 
-  optimResult <- yada_tailored_optim(calc_neg_log_lik_ord,th_v_bar0,x=x,v=v,modSpec=modSpec,tfCatVect=tfCatVect)
-  fit <- optimResult$fitBFGS
-  if(reqConv && (fit$convergence != 0)) {
-    stop(paste0('fit did not converge. convergence code = ',fit$convergence))
+
+  optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(th_v_bar0)))
+  fitBFGS <- optim(th_v_bar0,calc_neg_log_lik_ord,method='BFGS',control=optimControl,x=x,v=v,modSpec=modSpec,tfCatVect=tfCatVect)
+
+  if(reqConv && (fitBFGS$convergence != 0)) {
+    stop(paste0('fit did not converge. convergence code = ',fitBFGS$convergence))
   }
 
-  th_v <- param_unconstr2constr(fit$par,tfCatVect)
+  th_v <- param_unconstr2constr(fitBFGS$par,tfCatVect)
   return(th_v)
 }
 

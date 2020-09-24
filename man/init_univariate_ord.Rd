@@ -4,7 +4,7 @@
 \alias{init_univariate_ord}
 \title{Initialize the parameter vector for a univariate ordinal model}
 \usage{
-init_univariate_ord(x, v, modSpec)
+init_univariate_ord(x, v, modSpec, anneal = T)
 }
 \arguments{
 \item{x}{The vector of independent variables}
@@ -12,6 +12,8 @@ init_univariate_ord(x, v, modSpec)
 \item{v}{The vector of ordinal responses}
 
 \item{modSpec}{The model specification}
+
+\item{anneal}{Whether or not to refine the initialization by annealing}
 }
 \value{
 An initialization for the ordinal parameter vector, th_v0
