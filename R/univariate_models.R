@@ -472,6 +472,10 @@ init_univariate_ord <- function(x,v,modSpec,anneal=T) {
 #' @return The ordinal parameter vector, th_v
 #' @export
 fit_univariate_ord <- function(x,v,modSpec,anneal=T,reqConv=T) {
+  # Handle possible missing observations without throwing an error or warning
+  ind_bad <- is.na(x) | is.na(v)
+  x <- x[!ind_bad]
+  v <- v[!ind_bad]
   th_v0 <- init_univariate_ord(x,v,modSpec,anneal=anneal)
 
   tfCatVect <- get_univariate_ord_transform_categories(modSpec)
