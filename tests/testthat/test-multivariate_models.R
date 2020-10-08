@@ -1,4 +1,8 @@
 # Test yada::get_J
+# Test yada::get_K
+# Test yada::get_z_length
+# Test yada::get_num_var_multivariate
+
 # A one variable, ordinal model -- powLawOrd / const
 modSpec <- list()
 modSpec$meanSpec  <- 'powLawOrd'
@@ -13,6 +17,11 @@ expect_equal(
 
 expect_equal(
   get_K(modSpec),
+  0
+)
+
+expect_equal(
+  get_z_length(modSpec),
   0
 )
 
@@ -211,3 +220,208 @@ expect_error(
   'k = 1 is greater than the number of continuous variables K = 0'
 )
 
+expect_equal(
+  get_num_var_multivariate('z',modSpec),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('z',modSpec,preceding=T),
+  4
+)
+
+expect_error(
+  get_num_var_multivariate('notAVar',modSpec),
+  paste('Unrecognized variable notAVar')
+)
+
+# A one variable, continuous model -- powLaw / const
+modSpec <- list()
+modSpec$meanSpec  <- 'powLaw'
+modSpec$noiseSpec <- 'const'
+modSpec$K <- 1
+
+expect_equal(
+  get_J(modSpec),
+  0
+)
+
+expect_equal(
+  get_K(modSpec),
+  1
+)
+
+expect_equal(
+  get_z_length(modSpec),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,preceding=T),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,k=1),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,k=1,preceding=T),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=1),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=1,preceding=T),
+  0
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,j=1,k=1),
+  'If varName is a or alpha and j is specified, k should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,j=1,k=1,preceding=T),
+  'Only one of j, k, or i should be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,j=1,i=1),
+  'If varName is a or alpha and j is specified, i should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,j=1,i=1,preceding=T),
+  'Only one of j, k, or i should be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,k=2),
+  'k = 2 is greater than the number of continuous variables K = 1'
+)
+
+expect_error(
+  get_num_var_multivariate('a',modSpec,j=1),
+  'j = 1 is greater than the number of ordinal variables J = 0'
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,preceding=T),
+  3
+)
+
+expect_error(
+  get_num_var_multivariate('tau',modSpec,j=1,k=1),
+  'If varName is tau, k should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('tau',modSpec,j=1,i=1),
+  'If varName is tau and j is specified, i should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('tau',modSpec,j=1,i=1,preceding=T),
+  'Only one of j, k, or i should be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('tau',modSpec,k=1),
+  'If varName is tau, k should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('tau',modSpec,j=2),
+  'j = 2 is greater than the number of ordinal variables J = 0'
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,preceding=T),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,k=1),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,k=1,preceding=T),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,i=1),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,i=1,preceding=T),
+  3
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,j=1,k=1),
+  'If varName is a or alpha and j is specified, k should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,j=1,k=1,preceding=T),
+  'Only one of j, k, or i should be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,k=1,i=1),
+  'If varName is a or alpha and k is specified, i should not be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,k=1,i=1,preceding=T),
+  'Only one of j, k, or i should be specified'
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,j=1),
+  'j = 1 is greater than the number of ordinal variables J = 0'
+)
+
+expect_error(
+  get_num_var_multivariate('alpha',modSpec,k=2),
+  'k = 2 is greater than the number of continuous variables K = 1'
+)
+
+expect_equal(
+  get_num_var_multivariate('z',modSpec),
+  0
+)
+
+expect_equal(
+  get_num_var_multivariate('z',modSpec,preceding=T),
+  4
+)
+
+expect_error(
+  get_num_var_multivariate('notAVar',modSpec),
+  paste('Unrecognized variable notAVar')
+)
