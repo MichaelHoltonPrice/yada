@@ -233,11 +233,11 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
 
   inputPattern <- !is.na(c(j,k,i,i1,i2))
 
-  if(!all.equal(inputPattern,c(F,F,F,F,F)) &&
-     !all.equal(inputPattern,c(T,F,F,F,F)) &&
-     !all.equal(inputPattern,c(F,T,F,F,F)) &&
-     !all.equal(inputPattern,c(F,F,T,F,F)) &&
-     !all.equal(inputPattern,c(F,F,F,T,T)) ) {
+  if(!all(inputPattern == c(F,F,F,F,F)) &&
+     !all(inputPattern == c(T,F,F,F,F)) &&
+     !all(inputPattern == c(F,T,F,F,F)) &&
+     !all(inputPattern == c(F,F,T,F,F)) &&
+     !all(inputPattern == c(F,F,F,T,T)) ) { # this case should in fact have already been handled
     stop('Unsupported input pattern for index variables. See yada documentation')
   }
 
@@ -274,7 +274,7 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
 #    }
 #  }
 
-  if(all.equal(inputPattern,c(F,F,F,F,F))) {
+  if(all(inputPattern == c(F,F,F,F,F))) {
     # No index specified. Return all indices for variable
     offset <- get_num_var_multivariate(varName,modSpec,preceding=T)
     return(offset + 1:get_num_var_multivariate(varName,modSpec))

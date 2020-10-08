@@ -641,6 +641,97 @@ expect_equal(
   27:31
 )
 
+# Check functioning of index pattern errors
+
+# The following are valid input patterns:
+#
+# j   k   i  i1  i2
+# 0   0   0   0   0    no index
+# 1   0   0   0   0    j specified
+# 0   1   0   0   0    k specified
+# 0   0   1   0   0    i specified
+# 0   0   0   1   1    i1 and i2 specified
+
+# 0 0 0 0 0
+expect_error(
+  get_var_index_multivariate('a',modSpec),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('tau',modSpec),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('alpha',modSpec),
+  NA
+)
+
+# 1 0 0 0 0
+expect_error(
+  get_var_index_multivariate('a',modSpec,j=2),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('tau',modSpec,j=2),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('alpha',modSpec,j=2),
+  NA
+)
+
+# 0 1 0 0 0
+expect_error(
+  get_var_index_multivariate('a',modSpec,k=3),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('alpha',modSpec,k=3),
+  NA
+)
+
+# 0 0 1 0 0
+expect_error(
+  get_var_index_multivariate('a',modSpec,i=5),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('tau',modSpec,i=2),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('alpha',modSpec,i=5),
+  NA
+)
+
+# 0 0 0 1 1
+expect_error(
+  get_var_index_multivariate('z',modSpec,i1=2,i2=4),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate('a',modSpec,j=2,k=3),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
+expect_error(
+  get_var_index_multivariate('tau',modSpec,j=2,i=5),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
+expect_error(
+  get_var_index_multivariate('alpha',modSpec,i=2,k=3),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
 expect_equal(
   get_var_index_multivariate('z',modSpec,i1=1,i2=3),
   27
