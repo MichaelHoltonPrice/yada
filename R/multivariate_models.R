@@ -22,7 +22,7 @@ get_num_var_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,preceding=F)
       }
     }
 
-    # Next, handle the cases one of j, k, and i are specified
+    # Next, handle the case where one of j, k, and i are specified
     if(!is.na(j) && is.na(k) && is.na(i)) {
       return(get_num_var_multivariate(varName,modSpec,i=j,preceding=T))
     } else if(is.na(j) && !is.na(k) && is.na(i)) {
@@ -81,7 +81,12 @@ get_num_var_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,preceding=F)
       if(i > J+K) {
         stop(paste0('i = ',i,' is greater than the number of variables J+K = ',J+K))
       }
-      return(get_num_var_mean(modSpec$meanSpec[]))
+      if(varName == 'a') {
+        return(get_num_var_mean(modSpec$meanSpec[i]))
+      } else {
+        # alpha
+        return(get_num_var_noise(modSpec$noiseSpec[i]))
+      }
     } else { # j, k, and i are NA
       J <- get_J(modSpec)
       K <- get_K(modSpec)

@@ -373,7 +373,7 @@ expect_equal(
 
 expect_equal(
   get_num_var_multivariate('alpha',modSpec,i=1),
-  3
+  1
 )
 
 expect_equal(
@@ -424,4 +424,189 @@ expect_equal(
 expect_error(
   get_num_var_multivariate('notAVar',modSpec),
   paste('Unrecognized variable notAVar')
+)
+
+# A six variable, conditionally dependent model with logOrd
+modSpec <- list()
+modSpec$meanSpec=c('powLawOrd','logOrd','powLawOrd','powLaw','powLaw','powLaw')
+modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','lin_pos_int','const','const')
+modSpec$J <- 3
+modSpec$K <- 3
+modSpec$M <- c(2,3,2)
+modSpec$cdepSpec <- 'dep'
+modSpec$cdepGroups <- c(1,2,1,3,NA,2)
+
+expect_equal(
+  get_J(modSpec),
+  3
+)
+
+expect_equal(
+  get_K(modSpec),
+  3
+)
+
+expect_equal(
+  get_z_length(modSpec),
+  5
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec),
+  11
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,preceding=T),
+  0
+)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,j=1),
+#  1
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,j=1,preceding=T),
+#  0
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,i=1),
+#  1
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,i=1,preceding=T),
+#  0
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,j=2),
+#  0
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,j=2,preceding=T),
+#  1
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,i=2),
+#  0
+#)
+
+#expect_equal(
+#  get_num_var_multivariate('a',modSpec,i=2,preceding=T),
+#  1
+#)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,j=3),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,j=3,preceding=T),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=3),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=3,preceding=T),
+  1
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,k=3),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,k=3,preceding=T),
+  8
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=6),
+  3
+)
+
+expect_equal(
+  get_num_var_multivariate('a',modSpec,i=6,preceding=T),
+  8
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec),
+  7
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,preceding=T),
+  11
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,j=3),
+  2
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,j=3,preceding=T),
+  16
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,i=3),
+  2
+)
+
+expect_equal(
+  get_num_var_multivariate('tau',modSpec,i=3,preceding=T),
+  16
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec),
+  9
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,preceding=T),
+  18
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,j=3),
+  2
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,j=3,preceding=T),
+  21
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,i=3),
+  2
+)
+
+expect_equal(
+  get_num_var_multivariate('alpha',modSpec,i=3,preceding=T),
+  21
+)
+
+expect_equal(
+  get_num_var_multivariate('z',modSpec),
+  5
+)
+
+expect_equal(
+  get_num_var_multivariate('z',modSpec,preceding=T),
+  27
 )
