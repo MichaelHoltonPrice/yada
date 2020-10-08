@@ -186,10 +186,10 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
       stop('z requested but model is not conditionally dependent')
     }
 
-    offset <- get_num_var('z',modSpec,preceding=T)
+    offset <- get_num_var_multivariate('z',modSpec,preceding=T)
     if(is.na(i1) && is.na(i2)) {
       # Then return all the indices
-      return(offset + 1:get_num_var('z',modSpec))
+      return(offset + 1:get_num_var_multivariate('z',modSpec))
     }
 
     if(i1 == i2) {
@@ -220,9 +220,6 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
     return(offset+index)
   }
 }
-
-
-
 
 #' Get the number of ordinal variables given a model specification. If J is not
 #' a field in modSpec, 0 is returned.

@@ -610,3 +610,54 @@ expect_equal(
   get_num_var_multivariate('z',modSpec,preceding=T),
   27
 )
+
+
+# Test get_var_index_multivariate with a six variable model
+modSpec <- list(meanSpec=c('logOrd','powLawOrd','linOrd','powLaw','powLaw','powLaw'))
+modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const','const','lin_pos_int')
+modSpec$J <- 3
+modSpec$K <- 3
+modSpec$M <- c(2,3,2)
+modSpec$cdepSpec <- 'dep' # conditionally dependent
+modSpec$cdepGroups <- c(1,2,1,3,NA,2)
+
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec),
+  27:31
+)
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec,i1=1,i2=3),
+  27
+)
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec,i1=2,i2=6),
+  28
+)
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec,i1=1,i2=2),
+  29
+)
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec,i1=1,i2=4),
+  30
+)
+
+expect_equal(
+  get_var_index_multivariate('z',modSpec,i1=6,i2=4),
+  31
+)
+
+expect_error(
+  get_var_index_multivariate('z',modSpec,i1=2,i2=2),
+  'i1 should not equal i2'
+)
+
+expect_error(
+  get_var_index_multivariate('z',modSpec,i1=2,i2=5),
+  'Correlation requested for a variable with no correlations'
+)
