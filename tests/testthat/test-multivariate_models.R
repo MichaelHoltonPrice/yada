@@ -621,6 +621,20 @@ modSpec$M <- c(2,3,2)
 modSpec$cdepSpec <- 'dep' # conditionally dependent
 modSpec$cdepGroups <- c(1,2,1,3,NA,2)
 
+expect_equal(
+  get_var_index_multivariate('a',modSpec),
+  1:10
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec),
+  11:17
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec),
+  18:26
+)
 
 expect_equal(
   get_var_index_multivariate('z',modSpec),
@@ -661,3 +675,4 @@ expect_error(
   get_var_index_multivariate('z',modSpec,i1=2,i2=5),
   'Correlation requested for a variable with no correlations'
 )
+

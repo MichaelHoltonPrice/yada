@@ -218,6 +218,66 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
       index <- elemToIndex(c(g2-1,g1-1),numGroups) + 1
     }
     return(offset+index)
+  } # end code for varName == 'z'
+
+  # Do some error checking
+
+  # The following are valid input patterns:
+  #
+  # j   k   i  i1  i2
+  # 0   0   0   0   0    no index
+  # 1   0   0   0   0    j specified
+  # 0   1   0   0   0    k specified
+  # 0   0   1   0   0    i specified
+  # 0   0   0   1   1    i1 and i2 specified
+
+  inputPattern <- !is.na(c(j,k,i,i1,i2))
+
+  if(!all.equal(inputPattern,c(F,F,F,F,F)) &&
+     !all.equal(inputPattern,c(T,F,F,F,F)) &&
+     !all.equal(inputPattern,c(F,T,F,F,F)) &&
+     !all.equal(inputPattern,c(F,F,T,F,F)) &&
+     !all.equal(inputPattern,c(F,F,F,T,T)) ) {
+    stop('Unsupported input pattern for index variables. See yada documentation')
+  }
+
+  if(!is.na(j)) {
+    if(!(varName %in% c('a','tau','alpha')) ) {
+      stop('Unsupported variable for j being specified')
+    }
+    if(j < 1 || J < j) {
+      stop('j is not between 1 and J')
+    }
+  }
+
+  if(!is.na(k)) {
+    if(!(varName %in% c('a','alpha')) ) {
+      stop('Unsupported variable for k being specified')
+    }
+    if(k < 1 || K < k) {
+      stop('k is not between 1 and K')
+    }
+  }
+
+  if(!is.na(i)) {
+    if(!(varName %in% c('a','tau','alpha')) ) {
+      stop('Unsupported variable for i being specified')
+    }
+    if(i < 1 || (J+K) < i) {
+      stop('i is not between 1 and J+K')
+    }
+  }
+
+#  if(!is.na(i1)) { # given the error check above, i2 is also not NA
+#    if(varName != 'z') {
+#      stop('Unsupported variable for i1 and i2 being specified')
+#    }
+#  }
+
+  if(all.equal(inputPattern,c(F,F,F,F,F))) {
+    # No index specified. Return all indices for variable
+    offset <- get_num_var_multivariate(varName,modSpec,preceding=T)
+    return(offset + 1:get_num_var_multivariate(varName,modSpec))
   }
 }
 
