@@ -1,3 +1,33 @@
+#' Get the number of ordinal variables given a model specification. If J is not
+#' a field in modSpec, 0 is returned.
+#'
+#' @param modSpec The model specification
+#' @return The number of ordinal variables, J
+#' @export
+get_J <- function(modSpec) {
+  # A helper function to get J, which is assumed 0 if J is not a field in
+  # modSpec.
+  if('J' %in% names(modSpec)) {
+    return(modSpec$J)
+  } else {
+    return(0)
+  }
+}
+
+#' Get the number of continuous variables given a model specification. If K is
+#' not a field in modSpec, 0 is returned.
+#'
+#' @param modSpec The model specification
+#' @return The number of continuous variables, K
+#' @export
+get_K <- function(modSpec) {
+  if('K' %in% names(modSpec)) {
+    return(modSpec$K)
+  } else {
+    return(0)
+  }
+}
+
 #' Get the number of parameters for named variables of a multivariate model
 #' model
 #'
@@ -164,7 +194,23 @@ get_z_length <- function(modSpec) {
 
 
 
-#' Description and stuff
+#' Get the indices in the full parameter vector, th_y, of a named variable.
+#' Optionally, the variable index (j, k, or i) can be specified, or (for the
+#' correlation, z, the variable indices i1 and i2. The overall index, i, equals
+#' j for ordinal variables and J + k for continuous variables, where J is the
+#' number of ordinal variables. If no index is specified, the full range of
+#' indices for the input variable is returned. If the variable index (or
+#' indices) is specified, the relevant subrange is returned. The following
+#' table lists the five valid input patterns, where 1 indicates the index
+#' variable is specified and a 0 indicates it is not (and is thus equal to the
+#' default value, NA).
+#' j   k   i  i1  i2
+#' 0   0   0   0   0    no index
+#' 1   0   0   0   0    j specified
+#' 0   1   0   0   0    k specified
+#' 0   0   1   0   0    i specified
+#' 0   0   0   1   1    i1 and i2 specified
+
 #'
 #' @param varName The variable name (a, tau, alpha, z)
 #' @param modSpec The model specification
@@ -173,7 +219,7 @@ get_z_length <- function(modSpec) {
 #' @param i The overall index
 #' @param i1 The overall index for the first variable of a pair
 #' @param i2 The overall index for the second variable of a pair
-#' @return The number of parameters
+#' @return The indices in the full parameter vector, th_y
 #' @export
 get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=NA) {
 
@@ -209,7 +255,6 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
 
     # If i1 and i2 are members of different groups, this is an intergroup
     # correlation that is stored after the intragroup correlations.
-
     offset <- offset + sum(as.vector(table(modSpec$cdepGroups)) > 1)
     numGroups <- length(unique(modSpec$cdepGroups)[!is.na(unique(modSpec$cdepGroups))])
     if(g1 < g2) {
@@ -268,45 +313,61 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
     }
   }
 
-#  if(!is.na(i1)) { # given the error check above, i2 is also not NA
-#    if(varName != 'z') {
-#      stop('Unsupported variable for i1 and i2 being specified')
-#    }
-#  }
-
-  if(all(inputPattern == c(F,F,F,F,F))) {
-    # No index specified. Return all indices for variable
-    offset <- get_num_var_multivariate(varName,modSpec,preceding=T)
-    return(offset + 1:get_num_var_multivariate(varName,modSpec))
+  # Number of variables
+  N <- get_num_var_multivariate(varName,modSpec,j=j,k=k,i=i)
+  if(N == 0) {
+    return(c())
+  } else {
+    offset <- get_num_var_multivariate(varName,modSpec,j=j,k=k,i=i,preceding=T)
+    return(offset + (1:N))
   }
+
+  stop('This point should never be reached')
 }
 
-#' Get the number of ordinal variables given a model specification. If J is not
-#' a field in modSpec, 0 is returned.
-#'
-#' @param modSpec The model specification
-#' @return The number of ordinal variables, J
-#' @export
-get_J <- function(modSpec) {
-  # A helper function to get J, which is assumed 0 if J is not a field in
-  # modSpec.
-  if('J' %in% names(modSpec)) {
-    return(modSpec$J)
-  } else {
-    return(0)
-  }
-}
 
-#' Get the number of continuous variables given a model specification. If K is
-#' not a field in modSpec, 0 is returned.
+
+#' For a multivariate model, get the indices in the full parameter vector
+#' (th_y) correspdoning to a given univariate model. The correlation term is
+#' ignored for conditionally dependent models. Exactly one of j, k, or i must
+#' be specified (see the help for get_var_index_multivariate for more on j, k
+#' and i).
 #'
 #' @param modSpec The model specification
-#' @return The number of continuous variables, K
+#' @param j The ordinal index
+#' @param k The continuous index
+#' @param i The overall index
 #' @export
-get_K <- function(modSpec) {
-  if('K' %in% names(modSpec)) {
-    return(modSpec$K)
-  } else {
-    return(0)
+get_univariate_indices <- function(modSpec,j=NA,k=NA,i=NA) {
+
+  # Do error checking on pattern of inputs
+  inputPattern <- !is.na(c(j,k,i))
+  if(!all(inputPattern == c(T,F,F)) &&
+     !all(inputPattern == c(F,T,F)) &&
+     !all(inputPattern == c(F,F,T)) ) {
+    stop('Unsupported input pattern for index variables. See yada documentation')
   }
+
+  # If i is is specified, determine whether i corresponds to an ordinal or
+  # continuous variable, and (re)call get_univariate_indices, specifying j or
+  # k.
+  if(!is.na(i)) {
+    J <- get_J(modSpec)
+    if(i <= J) {
+      return(get_univariate_indices(modSpec,j=i))
+    } else {
+      return(get_univariate_indices(modSpec,k=i-J))
+    }
+  }
+
+  # If this point is reach, either j or k is specified (but not both)
+  if(!is.na(j)) {
+    ind <- c(get_var_index_multivariate('a',modSpec,j=j),
+             get_var_index_multivariate('tau',modSpec,j=j),
+             get_var_index_multivariate('alpha',modSpec,j=j))
+  } else { # k is specified
+    ind <- c(get_var_index_multivariate('a',modSpec,k=k),
+             get_var_index_multivariate('alpha',modSpec,k=k))
+  }
+  return(ind)
 }

@@ -435,7 +435,32 @@ modSpec$K <- 3
 modSpec$M <- c(2,3,2)
 modSpec$cdepSpec <- 'dep'
 modSpec$cdepGroups <- c(1,2,1,3,NA,2)
-
+# The low and high indices for each variable and index in the preceding model
+# specification (blank indicates none/NA). ns-1 stands for non-singleton group
+# 1 (etc.). inter-12 stands for intergroup correlation between 1 and 2 (etc.):
+#
+#
+# low	high		Variable	j	k	i	i1	i2
+# 1	1		a		1		1
+# 			a		2		2
+# 2	2		a		3		3
+# 3	5		a			1	4
+# 6	8		a			2	5
+# 9	11		a			3	6
+# 12	13		tau		1		1
+# 14	16		tau		2		2
+# 17	18		tau		3		3
+# 19	19		alpha		1		1
+# 20	21		alpha		2		2
+# 22	23		alpha		3		3
+# 24	25		alpha			1	4
+# 26	26		alpha			2	5
+# 27	27		alpha			3	6
+# 28	28		z [non-singleton group 1]	1	3
+# 29	29		z [non-singleton group 2]	2	6
+# 30	30		z [inter 1-2            ]	1	2
+# 31	31		z [inter 1-3            	1	4
+# 32	32		z [inter 2-3            ]	2	4
 expect_equal(
   get_J(modSpec),
   3
@@ -460,46 +485,6 @@ expect_equal(
   get_num_var_multivariate('a',modSpec,preceding=T),
   0
 )
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,j=1),
-#  1
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,j=1,preceding=T),
-#  0
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,i=1),
-#  1
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,i=1,preceding=T),
-#  0
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,j=2),
-#  0
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,j=2,preceding=T),
-#  1
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,i=2),
-#  0
-#)
-
-#expect_equal(
-#  get_num_var_multivariate('a',modSpec,i=2,preceding=T),
-#  1
-#)
 
 expect_equal(
   get_num_var_multivariate('a',modSpec,j=3),
@@ -612,7 +597,7 @@ expect_equal(
 )
 
 
-# Test get_var_index_multivariate with a six variable model
+# Test get_var_index_multivariate on a six variable model
 modSpec <- list(meanSpec=c('logOrd','powLawOrd','linOrd','powLaw','powLaw','powLaw'))
 modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const','const','lin_pos_int')
 modSpec$J <- 3
@@ -620,6 +605,31 @@ modSpec$K <- 3
 modSpec$M <- c(2,3,2)
 modSpec$cdepSpec <- 'dep' # conditionally dependent
 modSpec$cdepGroups <- c(1,2,1,3,NA,2)
+# The low and high indices for each variable and index in the preceding model
+# specification (blank indicates none/NA). ns-1 stands for non-singleton group
+# 1 (etc.). inter-12 stands for intergroup correlation between 1 and 2 (etc.):
+#
+# low	high		Variable	j	k	i	i1	i2
+#  	 		a		1		1
+# 1	1		a		2		2
+#  	 		a		3		3
+# 2	4		a			1	4
+# 5	7		a			2	5
+# 8	10		a			3	6
+# 11	12		tau		1		1
+# 13	15		tau		2		2
+# 16	17		tau		3		3
+# 18	18		alpha		1		1
+# 19	20		alpha		2		2
+# 21	22		alpha		3		3
+# 23	23		alpha			1	4
+# 24	24		alpha			2	5
+# 25	26		alpha			3	6
+# 27	27		z-ns-1			1	3
+# 28	28		z-ns-1			2	6
+# 29	29		z-inter-12		1	2
+# 30	30		z-inter-13		1	4
+# 31	31		z-inter 23		2	4
 
 expect_equal(
   get_var_index_multivariate('a',modSpec),
@@ -732,6 +742,160 @@ expect_error(
   'Unsupported input pattern for index variables. See yada documentation'
 )
 
+# Check a for indices being specified
+expect_equal(
+  get_var_index_multivariate('a',modSpec,j=1),
+  c()
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,j=2),
+  1
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,j=3),
+  c()
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,k=1),
+  2:4
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,k=2),
+  5:7
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,k=3),
+  8:10
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=1),
+  c()
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=2),
+  1
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=3),
+  c()
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=4),
+  2:4
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=5),
+  5:7
+)
+
+expect_equal(
+  get_var_index_multivariate('a',modSpec,i=6),
+  8:10
+)
+
+# Check tau for indices being specified
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,j=1),
+  11:12
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,j=2),
+  13:15
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,j=3),
+  16:17
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,i=1),
+  11:12
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,i=2),
+  13:15
+)
+
+expect_equal(
+  get_var_index_multivariate('tau',modSpec,i=3),
+  16:17
+)
+
+# Check alpha for indices being specified
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,j=1),
+  18
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,j=2),
+  19:20
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,j=3),
+  21:22
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,k=1),
+  23
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,k=2),
+  24
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,k=3),
+  25:26
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=1),
+  18
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=2),
+  19:20
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=3),
+  21:22
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=4),
+  23
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=5),
+  24
+)
+
+expect_equal(
+  get_var_index_multivariate('alpha',modSpec,i=6),
+  25:26
+)
+
+# Check z for indices being specified
 expect_equal(
   get_var_index_multivariate('z',modSpec,i1=1,i2=3),
   27
@@ -766,4 +930,132 @@ expect_error(
   get_var_index_multivariate('z',modSpec,i1=2,i2=5),
   'Correlation requested for a variable with no correlations'
 )
+
+# Test get_univariate_indices with the same six variable model
+
+# Check functioning of index pattern errors
+# The following are valid input patterns:
+#
+# j   k   i
+# 1   0   0    j specified
+# 0   1   0    k specified
+# 0   0   1    i specified
+
+for(j in c(NA,2)) {
+  for(k in c(NA,3)) {
+    for(i in c(NA,6)) {
+      if(!is.na(j) && is.na(k) && is.na(i)) {
+        # 1 0 0
+        expect_error(
+          get_univariate_indices(modSpec,j=j),
+          NA
+        )
+      } else if(is.na(j) && !is.na(k) && is.na(i)) {
+        # 0 1 0
+        expect_error(
+          get_univariate_indices(modSpec,k=k),
+          NA
+        )
+       } else if(is.na(j) && is.na(k) && !is.na(i)) {
+        # 0 0 1
+        expect_error(
+          get_univariate_indices(modSpec,i=i),
+          NA
+        )
+      } else {
+        # All other patterns
+        expect_error(
+          get_univariate_indices(modSpec,j=j,k=k,i=i),
+          'Unsupported input pattern for index variables. See yada documentation'
+        )
+      }
+    }
+  }
+}
+
+expect_equal(
+  get_univariate_indices(modSpec,j=1),
+  c(11:12,18)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=1),
+  c(11:12,18)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,j=2),
+  c(1,13:15,19:20)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=2),
+  c(1,13:15,19:20)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,j=3),
+  c(16:17,21:22)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=3),
+  c(16:17,21:22)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,k=1),
+  c(2:4,23)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=4),
+  c(2:4,23)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,k=2),
+  c(5:7,24)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=5),
+  c(5:7,24)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,k=3),
+  c(8:10,25:26)
+)
+
+expect_equal(
+  get_univariate_indices(modSpec,i=6),
+  c(8:10,25:26)
+)
+
+# The low and high indices for each variable and index in the preceding model
+# specification (blank indicates none/NA). ns-1 stands for non-singleton group
+# 1 (etc.). inter-12 stands for intergroup correlation between 1 and 2 (etc.):
+#
+# low	high		Variable	j	k	i	i1	i2
+#  	 		a		1		1
+# 1	1		a		2		2
+#  	 		a		3		3
+# 2	4		a			1	4
+# 5	7		a			2	5
+# 8	10		a			3	6
+# 11	12		tau		1		1
+# 13	15		tau		2		2
+# 16	17		tau		3		3
+# 18	18		alpha		1		1
+# 19	20		alpha		2		2
+# 21	22		alpha		3		3
+# 23	23		alpha			1	4
+# 24	24		alpha			2	5
+# 25	26		alpha			3	6
+# 27	27		z-ns-1			1	3
+# 28	28		z-ns-1			2	6
+# 29	29		z-inter-12		1	2
+# 30	30		z-inter-13		1	4
+# 31	31		z-inter 23		2	4
 

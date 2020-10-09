@@ -2,7 +2,22 @@
 % Please edit documentation in R/multivariate_models.R
 \name{get_var_index_multivariate}
 \alias{get_var_index_multivariate}
-\title{Description and stuff}
+\title{Get the indices in the full parameter vector, th_y, of a named variable.
+Optionally, the variable index (j, k, or i) can be specified, or (for the
+correlation, z, the variable indices i1 and i2. The overall index, i, equals
+j for ordinal variables and J + k for continuous variables, where J is the
+number of ordinal variables. If no index is specified, the full range of
+indices for the input variable is returned. If the variable index (or
+indices) is specified, the relevant subrange is returned. The following
+table lists the five valid input patterns, where 1 indicates the index
+variable is specified and a 0 indicates it is not (and is thus equal to the
+default value, NA).
+j   k   i  i1  i2
+0   0   0   0   0    no index
+1   0   0   0   0    j specified
+0   1   0   0   0    k specified
+0   0   1   0   0    i specified
+0   0   0   1   1    i1 and i2 specified}
 \usage{
 get_var_index_multivariate(
   varName,
@@ -30,8 +45,23 @@ get_var_index_multivariate(
 \item{i2}{The overall index for the second variable of a pair}
 }
 \value{
-The number of parameters
+The indices in the full parameter vector, th_y
 }
 \description{
-Description and stuff
+Get the indices in the full parameter vector, th_y, of a named variable.
+Optionally, the variable index (j, k, or i) can be specified, or (for the
+correlation, z, the variable indices i1 and i2. The overall index, i, equals
+j for ordinal variables and J + k for continuous variables, where J is the
+number of ordinal variables. If no index is specified, the full range of
+indices for the input variable is returned. If the variable index (or
+indices) is specified, the relevant subrange is returned. The following
+table lists the five valid input patterns, where 1 indicates the index
+variable is specified and a 0 indicates it is not (and is thus equal to the
+default value, NA).
+j   k   i  i1  i2
+0   0   0   0   0    no index
+1   0   0   0   0    j specified
+0   1   0   0   0    k specified
+0   0   1   0   0    i specified
+0   0   0   1   1    i1 and i2 specified
 }
