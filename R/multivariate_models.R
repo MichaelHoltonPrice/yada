@@ -577,23 +577,25 @@ remove_missing_variables <- function(y0,modSpec0) {
   return(list(y=y,modSpec=modSpec,mapping=mapping,mapping0=mapping0,ind=ind,keep=keep))
 }
 
+#' @export
+calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
+  if(!all(is.na(tfCatVect))) {
+    th_y <- param_unconstr2constr(th_y,tfCatVect)
+  }
 
+  N <- length(calcData$indList)
+  '%dopar%' <- foreach::'%dopar%'
+  negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
+    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]])
+  }
+  return(as.vector(negLogLikVect))
+}
 
-
-
-#calc_neg_log_lik_vect_multivariate_core2 <- function(th_y,calcData) {
-#  N <- length(calcData$indList)
-#  '%dopar%' <- foreach::'%dopar%'
-#  negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
-#    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$modSpecList[[n]],calcData$mappingList[[n]])
-#  }
-##  negLogLikVect <- rep(NA,N)
-##  for(n in 1:N) {
-##    print(n)
-##    negLogLikVect[n] <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$modSpecList[[n]],calcData$mappingList[[n]])
-##  }
-#  return(as.vector(negLogLikVect))
-#}
+#' @export
+calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA) {
+  negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect)
+  return(sum(negLogLikVect))
+}
 
 #' Calculate the vector of negative log-likelihoods values for a multivariate
 #' model. To increase execution speed, the calculation data (calcData) output

@@ -1474,3 +1474,5 @@ mappingList[[2]] <- mapping
 #  -c(lik1,lik2)
 #)
 }
+
+# TODO: add tests for calc_neg_log_lik_vect_multivariate and calc_neg_log_lik_multivariate
