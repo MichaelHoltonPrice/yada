@@ -2,6 +2,7 @@
 
 export(calc_bin_prob)
 export(calc_conditional_gaussian_integral)
+export(calc_conditional_gaussian_integral_approx)
 export(calc_mean)
 export(calc_mean_univariate_cont)
 export(calc_mean_univariate_ord)

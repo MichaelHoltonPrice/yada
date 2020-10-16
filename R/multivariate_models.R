@@ -406,6 +406,13 @@ get_univariate_indices <- function(modSpec,j=NA,k=NA,i=NA) {
 #  return(as.vector(negLogLikVect))
 #}
 
+
+#' Prepare for the negative log-likelihood calculations by creating indexing
+#' objects to speed up execution.
+#'
+#' @param x The independent variable
+#' @param Y The matrix of responses
+#' @param modSpec The model specification
 #' @export
 prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
   N <- length(x)
@@ -438,7 +445,7 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
       xj <- xj[indj]
       yj <- yj[indj]
       if(any((xj == 0) & (yj > 0))) {
-        stop(paste0('For variable j=',str(j),', cases exist where meanSpec is logOrd, x=0, and m=0'))
+        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m=0'))
       }
       matches <- which((xj == 0) & (yj == 0))
       if(length(matches) > 0) {
@@ -447,6 +454,7 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
     }
   }
 
+  # Call remove_missing_variables to populate the following lists:
   y_list <- list()
   modSpecList  <- list()
   mappingList  <- list()
@@ -456,7 +464,6 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
   for(n in 1:N) {
     # Remove missing variables
     remap <- remove_missing_variables(Y[,n],modSpec)
-    #return(list(y=y,modSpec=modSpec,mapping=mapping,mapping0=mapping0,ind=ind,keep=keep))
     y_list[[n]] <- remap$y
     modSpecList[[n]]  <- remap$modSpec
     mappingList[[n]]  <- remap$mapping
@@ -468,6 +475,19 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
   return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
 }
 
+#' For a single observation with response vector y0 and model specification
+#' modSpec0, modify modSpec0 to account for missing observations in y0, which
+#' are indicated with NA. In addition, create additional variables to support
+#' calculation of the negative log-likelihood for the observation. (a) mapping:
+#' a list of index mappings for the reduced data observation (see
+#' get_var_index_multivariate_mapping and get_var_index_multivariate_fast).
+#' (b) mapping0: the mapping for the unreduced problem. (c) ind: a vector that
+#' subsets the full parameter vector to account for the reduction. (d) keep:
+#' a boolean vector indicating which variables were kept in the reduction.
+#'
+#' @param y0 The unreduced response vector
+#' @param modSpec The unreduced model specification
+#' @return The list with y, modSpec, mapping, mapping0, ind, and keep
 #' @export
 remove_missing_variables <- function(y0,modSpec0) {
 
@@ -510,15 +530,16 @@ remove_missing_variables <- function(y0,modSpec0) {
   new2old_group <- rep(NA,Ng)
 
   groups <- rep(NA,Ng)
-  for(g in 1:Ng) {
-     if(!is.na(groups0_reduced[g])) {
-       groups[g] <- which(groups0_reduced[g] == uniqueGroups0_reduced)
-       new2old_group[g] <- which(keep)[g]
+  for(i in 1:length(groups0_reduced)) {
+     if(!is.na(groups0_reduced[i])) {
+       groups[i] <- which(groups0_reduced[i] == uniqueGroups0_reduced)
+     } else {
+       groups[i] <- NA
      }
   }
+
+  new2old_group <- uniqueGroups0_reduced
   modSpec$cdepGroups <- groups
-
-
 
   mapping0 <- get_var_index_multivariate_mapping(modSpec0)
   mapping  <- get_var_index_multivariate_mapping(modSpec)
@@ -552,24 +573,20 @@ remove_missing_variables <- function(y0,modSpec0) {
   # Add non-singleton groups
   nonSingGroups0 <- get_non_singleton_groups(groups0)
   nonSingGroups  <- get_non_singleton_groups(groups)
+  numBefore <- get_num_var_multivariate('z',modSpec0,preceding=T)
   if(length(nonSingGroups) > 0) {
     for(g in nonSingGroups) {
       g0 <- new2old_group[g]
-      ind <- c(ind,which(g0 == nonSingGroups0))
+      ind <- c(ind,numBefore + which(g0 == nonSingGroups0))
     }
   }
 
   # Add cross-group correlations
-  counter <- 0
   for(g1 in 1:(Ng-1)) {
     for(g2 in (g1+1):Ng) {
-      if(!is.na(groups[g1]) && !is.na(groups[g2])) {
-        g1_0 <- new2old_group[g1]
-        g2_0 <- new2old_group[g2]
-        i1_0 <- groups0[g1_0]
-        i2_0 <- groups0[g2_0]
-        ind <- c(ind,get_var_index_multivariate_fast('z',mapping0,i1=i1_0,i2=i2_0))
-      }
+      g1_0 <- new2old_group[g1]
+      g2_0 <- new2old_group[g2]
+      ind <- c(ind,numBefore + length(nonSingGroups0) + elemToIndex(c(g1_0,g2_0)-1,Ng0) + 1)
     }
   }
   ind <- sort(ind)
@@ -578,7 +595,7 @@ remove_missing_variables <- function(y0,modSpec0) {
 }
 
 #' @export
-calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
+calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
   if(!all(is.na(tfCatVect))) {
     th_y <- param_unconstr2constr(th_y,tfCatVect)
   }
@@ -586,14 +603,14 @@ calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   N <- length(calcData$indList)
   '%dopar%' <- foreach::'%dopar%'
   negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
-    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]])
+    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]],approx=approx)
   }
   return(as.vector(negLogLikVect))
 }
 
 #' @export
-calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA) {
-  negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect)
+calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
+  negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect,approx=approx)
   return(sum(negLogLikVect))
 }
 
@@ -607,7 +624,7 @@ calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA) {
 #' @param mapping The index mapping for rapid calculations
 #' @return The negative log-likelihood
 #' @export
-calc_neg_log_lik_multivariate_core <- function(th_y,x,y,mapping) {
+calc_neg_log_lik_multivariate_core <- function(th_y,x,y,mapping,approx=F) {
   J <- yada::get_J(mapping$modSpec)
   K <- yada::get_K(mapping$modSpec)
 
@@ -694,7 +711,11 @@ calc_neg_log_lik_multivariate_core <- function(th_y,x,y,mapping) {
   covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
   covMat <- covMat * zMat
 
-  return(-calc_conditional_gaussian_integral(meanVect,covMat,lo=lo,hi=hi,y_giv=y_giv,log=T))
+  if(approx) {
+    return(-calc_conditional_gaussian_integral_approx(meanVect,covMat,lo=lo,hi=hi,y_giv=y_giv,log=T))
+  } else {
+    return(-calc_conditional_gaussian_integral(meanVect,covMat,lo=lo,hi=hi,y_giv=y_giv,log=T))
+  }
 }
 
 #' For a given model specification of a multivariate model, return a vector that

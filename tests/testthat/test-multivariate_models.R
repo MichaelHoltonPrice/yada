@@ -627,7 +627,7 @@ modSpec$cdepGroups <- c(1,2,1,3,NA,2)
 # 24	24		alpha			2	5
 # 25	26		alpha			3	6
 # 27	27		z-ns-1			1	3
-# 28	28		z-ns-1			2	6
+# 28	28		z-ns-2			2	6
 # 29	29		z-inter-12		1	2
 # 30	30		z-inter-13		1	4
 # 31	31		z-inter 23		2	4
@@ -1170,6 +1170,191 @@ for(i1 in 1:(J+K-1)) {
 }
 
 
+# Test remove_missing_variables and prep_for_neg_log_lik_multivariate on the
+# preceding model
+y0_1 <- c(1,NA,0,10.5,11.5,NA)
+modSpec0 <- modSpec
+expect_error(
+  reducedData1 <- remove_missing_variables(y0_1,modSpec0),
+  NA
+)
+
+expect_equal(
+  names(reducedData1),
+  c("y","modSpec","mapping","mapping0","ind","keep")
+)
+
+expect_equal(
+  reducedData1$y,
+  c(1,0,10.5,11.5)
+)
+
+expect_equal(
+  reducedData1$modSpec,
+  list(
+       meanSpec    = c('logOrd','linOrd','powLaw','powLaw'),
+       noiseSpec   = c('const','lin_pos_int','const','const'),
+       J           = 2,
+       K           = 2,
+       M           = c(2,2),
+       cdepSpec    = 'dep',
+       cdepGroups  = c(1,1,2,NA)
+      )
+)
+
+expect_equal(
+  reducedData1$ind,
+  c(
+     2: 4, # a4,
+     5: 7, # a5
+    11:12, # tau1
+    16:17, # tau3
+       18, # alpha1
+    21:22, # alpha3
+       23, # alpha4
+       24, # alpha5
+       27, # z-cross-1
+       30  # z-inter-13
+   )
+)
+
+# The functioning of get_var_index_multivariate_mapping is separately checked
+expect_equal(
+  reducedData1$mapping,
+  get_var_index_multivariate_mapping(reducedData1$modSpec)
+)
+
+expect_equal(
+  reducedData1$mapping0,
+  get_var_index_multivariate_mapping(modSpec0)
+)
+
+y0_2 <- c(0,1,NA,9.5,NA,NA)
+expect_error(
+  reducedData2 <- remove_missing_variables(y0_2,modSpec0),
+  NA
+)
+
+expect_equal(
+  names(reducedData2),
+  c("y","modSpec","mapping","mapping0","ind","keep")
+)
+
+expect_equal(
+  reducedData2$y,
+  c(0,1,9.5)
+)
+
+expect_equal(
+  reducedData2$modSpec,
+  list(
+       meanSpec    = c('logOrd','powLawOrd','powLaw'),
+       noiseSpec   = c('const','lin_pos_int','const'),
+       J           = 2,
+       K           = 1,
+       M           = c(2,3),
+       cdepSpec    = 'dep',
+       cdepGroups  = c(1,2,3)
+      )
+)
+
+expect_equal(
+  reducedData2$ind,
+  c(
+        1, # a2,
+     2: 4, # a4,
+    11:12, # tau1
+    13:15, # tau2
+       18, # alpha1
+    19:20, # alpha2
+       23, # alpha4
+    29:31  # z-inter-all
+   )
+)
+
+# The functioning of get_var_index_multivariate_mapping is separately checked
+expect_equal(
+  reducedData2$mapping,
+  get_var_index_multivariate_mapping(reducedData2$modSpec)
+)
+
+expect_equal(
+  reducedData2$mapping0,
+  get_var_index_multivariate_mapping(modSpec0)
+)
+
+# Check functioning of logOrd
+y0_3 <- c(1,1,NA,9.5,NA,NA)
+Y0 <- cbind(y0_1,y0_3)
+
+# Expect error if x is zero for first observation
+x <- c(3,0)
+
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(x,Y0,modSpec),
+  'For variable j=1, cases exist where meanSpec is logOrd, x=0, and m=0'
+)
+
+
+# It's OK if x is zero for logOrd if m is zero
+y0_4 <- c(0,1,NA,9.5,NA,NA)
+Y0 <- cbind(y0_1,y0_4)
+
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(x,Y0,modSpec),
+  NA
+)
+
+expect_equal(
+  names(calcData),
+  c("x","y_list","modSpecList","mappingList","mapping0List","indList","keepList")
+)
+
+# update y0_4 for the special case with logOrd, then call
+# remove_missing_variables directly (this is to check calcData)
+y0_4[1] <- NA 
+expect_error(
+  reducedData4 <- remove_missing_variables(y0_4,modSpec0),
+  NA
+)
+
+expect_equal(
+  calcData$x,
+  x
+)
+
+expect_equal(
+  calcData$y_list,
+  list(reducedData1$y,reducedData4$y)
+)
+
+expect_equal(
+  calcData$modSpecList,
+  list(reducedData1$modSpec,reducedData4$modSpec)
+)
+
+expect_equal(
+  calcData$mappingList,
+  list(reducedData1$mapping,reducedData4$mapping)
+)
+
+expect_equal(
+  calcData$mapping0List,
+  list(reducedData1$mapping0,reducedData4$mapping0)
+)
+
+expect_equal(
+  calcData$indList,
+  list(reducedData1$ind,reducedData4$ind)
+)
+
+expect_equal(
+  calcData$keepList,
+  list(reducedData1$keep,reducedData4$keep)
+)
+# TODO: check functionality of prep_for_neg_log_lik_multivariate 
+
+# Test get_univariate_indices with the same six variable model
 # Check calculations related to z
 # A four variable (does not exercise all functionality; TODO: check also linOrd and hyperb)
 modSpec <- list(meanSpec=c('logOrd','powLawOrd','powLaw','powLaw'))
@@ -1475,4 +1660,11 @@ mappingList[[2]] <- mapping
 #)
 }
 
-# TODO: add tests for calc_neg_log_lik_vect_multivariate and calc_neg_log_lik_multivariate
+# TODO:
+#prep_for_neg_log_lik_multivariate
+#calc_neg_log_like_vect_multivariate
+#calc_neg_log_like_multivariate
+#get_multivariate_transform_categories
+#renumber_groups
+#get_non_singleton_groups
+

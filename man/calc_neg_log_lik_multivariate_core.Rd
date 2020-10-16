@@ -6,7 +6,7 @@
 model. To increase execution speed, the calculation data (calcData) output
 by prep_for_neg_log_lik_multivariate is used.}
 \usage{
-calc_neg_log_lik_multivariate_core(th_y, x, y, mapping)
+calc_neg_log_lik_multivariate_core(th_y, x, y, mapping, approx = F)
 }
 \arguments{
 \item{th_y}{The parameter vector [a,tau,alpha,z]}
