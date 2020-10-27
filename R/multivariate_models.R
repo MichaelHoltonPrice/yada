@@ -594,19 +594,42 @@ remove_missing_variables <- function(y0,modSpec0) {
   return(list(y=y,modSpec=modSpec,mapping=mapping,mapping0=mapping0,ind=ind,keep=keep))
 }
 
+
 #' @export
-calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
+calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   if(!all(is.na(tfCatVect))) {
     th_y <- param_unconstr2constr(th_y,tfCatVect)
   }
 
-  N <- length(calcData$indList)
-  '%dopar%' <- foreach::'%dopar%'
-  negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
-    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]],approx=approx)
+  N <- length(calcData)
+
+  negLogLikVect <- foreach(n=1:N,.combine=cbind,.packages=c('yada','ksoptim')) %dopar% {
+    negLogLik_n <- calc_neg_log_lik_scalar_multivariate(th_y,calcData[[n]])
   }
-  return(as.vector(negLogLikVect))
+  return(negLogLikVect)
 }
+
+#' @export
+calc_neg_log_lik_scalar_multivariate <- function(th_y,calcData_n) {
+  prepData_n <- calc_cond_gauss_int_inputs(th_y[calcData_n$ind],calcData_n$x,calcData_n$y,calcData_n$mapping)
+  negLogLik_n <- -calc_conditional_gaussian_integral(prepData_n$meanVect,prepData_n$covMat,prepData_n$lo,prepData_n$hi,prepData_n$y_giv,log=T)
+  return(negLogLik_n)
+}
+
+
+
+#calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
+#  if(!all(is.na(tfCatVect))) {
+#    th_y <- param_unconstr2constr(th_y,tfCatVect)
+#  }
+#
+#  N <- length(calcData$indList)
+#  '%dopar%' <- foreach::'%dopar%'
+#  negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
+#    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]],approx=approx)
+#  }
+#  return(as.vector(negLogLikVect))
+#}
 
 #' @export
 calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
@@ -1105,4 +1128,104 @@ get_non_singleton_groups <- function(groupVect) {
   # [1] 1 3
   counts <- table(groupVect)
   return(sort(as.numeric(names(counts))[counts > 1]))
+}
+
+#' For a single obersvation, calculate the inputs to the conditional Gaussian
+#' integral, which are meanVect, coMat, lo, and hi. These are returned as a
+#' list.
+#'
+#' @param th_y The parameter vector
+#' @param x The independent variable (a scalar)
+#' @param y The response variables (a vector)
+#' @param mapping The mapping for fast extraction of indices (see get_var_index_multivariate_mapping)
+#' @return A list with the mean vector (meanVect), covariance matrix (covMat), low limit of integration (lo), high limit of integration (hi), and given/conditioned response variables (y_giv).
+#' @export
+calc_cond_gauss_int_inputs <- function(th_y,x,y,mapping) {
+  J <- get_J(mapping$modSpec) # number of ordinal variables
+  K <- get_K(mapping$modSpec) # number of continuous variables
+
+  if( (J == 0) && (K == 0)) {
+    stop('J and K cannot both be zero')
+  }
+
+  # Calculate meanVect, noiseVect, lo, and hi using for loops over the ordinal
+  # and continuous variables.
+  meanVect  <- rep(NA,J+K)
+  noiseVect <- rep(NA,J+K)
+  if(J > 0) {
+    lo <- rep(-Inf,J)
+    hi <- rep( Inf,J)
+    for(j in 1:J) {
+      tau_j     <- th_y[get_var_index_multivariate_fast('tau'  ,mapping,j=j)]
+      if(mapping$modSpec$meanSpec[j] == 'powLawOrd') {
+        a_j       <- th_y[get_var_index_multivariate_fast('a'    ,mapping,j=j)]
+        meanVect[j] <- x^a_j
+      } else if(mapping$modSpec$meanSpec[j] == 'logOrd') {
+        meanVect[j] <- log(x)
+      } else if(mapping$modSpec$meanSpec[j] == 'linOrd') {
+        meanVect[j] <- x
+      } else {
+        stop(paste0('Unsupported meanSpec = ',mapping$modSpec$meanSpec[j]))
+      }
+
+      alpha_j   <- th_y[get_var_index_multivariate_fast('alpha',mapping,j=j)]
+      if(mapping$modSpec$noiseSpec[j] == 'const') {
+        noiseVect[j] <- alpha_j
+      } else if(mapping$modSpec$noiseSpec[j] == 'lin_pos_int') {
+        noiseVect[j] <- alpha_j[1]*(1 + x*alpha_j[2])
+      } else {
+        stop(paste0('Unsupported noiseSpec = ',mapping$modSpec$noiseSpec[j]))
+      }
+
+      tau_j <- th_y[get_var_index_multivariate_fast('tau',mapping,j=j)]
+      if(y[j] > 0) {
+        lo[j] <- tau_j[y[j]]
+      }
+      if(y[j] < mapping$modSpec$M[j]) {
+        hi[j] <- tau_j[y[j]+1]
+      }
+    }
+  } else {
+    lo <- c()
+    hi <- c()
+  }
+
+  if(K > 0) {
+    for(k in 1:K) {
+      a_k       <- th_y[get_var_index_multivariate_fast('a'    ,mapping,k=k)]
+      alpha_k   <- th_y[get_var_index_multivariate_fast('alpha',mapping,k=k)]
+
+      if(mapping$modSpec$meanSpec[J+k] == 'powLaw') {
+        meanVect[J+k] <- a_k[2]*x^a_k[1] + a_k[3]
+      } else {
+        stop(paste0('Unsupported meanSpec = ',mapping$modSpec$meanSpec[J+k]))
+      }
+
+      if(mapping$modSpec$noiseSpec[J+k] == 'const') {
+        noiseVect[J+k] <- alpha_k
+      } else if(mapping$modSpec$noiseSpec[J+k] == 'lin_pos_int') {
+        noiseVect[J+k] <- alpha_k[1]*(1 + x*alpha_k[2])
+      } else {
+        stop(paste0('Unsupported noiseSpec = ',mapping$modSpec$noiseSpec[J+k]))
+      }
+    }
+    y_giv <- y[J + (1:K)]
+  } else {
+    y_giv <- c()
+  }
+
+  # Calculate the covariance matrix (covMat)
+  z_full <- rep(0,choose(J+K,2))
+  B <- which(!is.na(mapping$i1_i2_index))
+  ind_z <- mapping$i1_i2_index[B]
+  z_full[B] <- th_y[ind_z]
+
+  zMat <- diag(J+K)
+  zMat[upper.tri(zMat)] <- z_full
+  zMat <- t(zMat)
+  zMat[upper.tri(zMat)] <- z_full
+  zMat <- t(zMat)
+  covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
+  covMat <- covMat * zMat
+  return(list(meanVect=meanVect,covMat=covMat,lo=lo,hi=hi,y_giv=y_giv))
 }
