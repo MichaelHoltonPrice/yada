@@ -28,6 +28,11 @@ expect_equal(
 )
 
 expect_equal(
+  is_cdep(modSpec),
+  F 
+)
+
+expect_equal(
   get_num_var_multivariate('a',modSpec),
   1
 )
@@ -259,6 +264,11 @@ expect_equal(
 )
 
 expect_equal(
+  is_cdep(modSpec),
+  F 
+)
+
+expect_equal(
   get_num_var_multivariate('a',modSpec),
   3
 )
@@ -479,6 +489,11 @@ expect_equal(
 )
 
 expect_equal(
+  is_cdep(modSpec),
+  T 
+)
+
+expect_equal(
   get_num_var_multivariate('a',modSpec),
   11
 )
@@ -598,7 +613,8 @@ expect_equal(
   27
 )
 
-# Test get_var_index_multivariate on a six variable model
+# Test get_var_index_multivariate, get_var_index_multivariate_mapping, and
+# get_var_index_multivariate_fast on a six variable model
 modSpec <- list(meanSpec=c('logOrd','powLawOrd','linOrd','powLaw','powLaw','powLaw'))
 modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const','const','lin_pos_int')
 modSpec$J <- 3
@@ -632,8 +648,18 @@ modSpec$cdepGroups <- c(1,2,1,3,NA,2)
 # 30	30		z-inter-13		1	4
 # 31	31		z-inter 23		2	4
 
+expect_error(
+  mapping <- get_var_index_multivariate_mapping(modSpec),
+  NA
+)
+
 expect_equal(
   get_var_index_multivariate('a',modSpec),
+  1:10
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping),
   1:10
 )
 
@@ -643,12 +669,27 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('tau',mapping),
+  11:17
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec),
   18:26
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping),
+  18:26
+)
+
+expect_equal(
   get_var_index_multivariate('z',modSpec),
+  27:31
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('z',mapping),
   27:31
 )
 
@@ -670,12 +711,27 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('a',mapping),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('tau',modSpec),
   NA
 )
 
 expect_error(
+  get_var_index_multivariate_fast('tau',mapping),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('alpha',modSpec),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate_fast('alpha',mapping),
   NA
 )
 
@@ -686,12 +742,28 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('a',mapping,j=2),
+  NA
+)
+
+
+expect_error(
   get_var_index_multivariate('tau',modSpec,j=2),
   NA
 )
 
 expect_error(
+  get_var_index_multivariate_fast('tau',mapping,j=2),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('alpha',modSpec,j=2),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate_fast('alpha',mapping,j=2),
   NA
 )
 
@@ -702,7 +774,17 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('a',mapping,k=3),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('alpha',modSpec,k=3),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate_fast('alpha',mapping,k=3),
   NA
 )
 
@@ -713,12 +795,27 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('a',mapping,i=5),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('tau',modSpec,i=2),
   NA
 )
 
 expect_error(
+  get_var_index_multivariate_fast('tau',mapping,i=2),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('alpha',modSpec,i=5),
+  NA
+)
+
+expect_error(
+  get_var_index_multivariate_fast('alpha',mapping,i=5),
   NA
 )
 
@@ -729,7 +826,17 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('z',mapping,i1=2,i2=4),
+  NA
+)
+
+expect_error(
   get_var_index_multivariate('a',modSpec,j=2,k=3),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
+expect_error(
+  get_var_index_multivariate_fast('a',mapping,j=2,k=3),
   'Unsupported input pattern for index variables. See yada documentation'
 )
 
@@ -739,7 +846,17 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('tau',mapping,j=2,i=5),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
+expect_error(
   get_var_index_multivariate('alpha',modSpec,i=2,k=3),
+  'Unsupported input pattern for index variables. See yada documentation'
+)
+
+expect_error(
+  get_var_index_multivariate_fast('alpha',mapping,i=2,k=3),
   'Unsupported input pattern for index variables. See yada documentation'
 )
 
@@ -750,7 +867,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,j=1),
+  c()
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,j=2),
+  1
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,j=2),
   1
 )
 
@@ -760,7 +887,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,j=3),
+  c()
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,k=1),
+  2:4
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,k=1),
   2:4
 )
 
@@ -770,7 +907,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,k=2),
+  5:7
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,k=3),
+  8:10
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,k=3),
   8:10
 )
 
@@ -780,7 +927,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=1),
+  c()
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,i=2),
+  1
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=2),
   1
 )
 
@@ -790,7 +947,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=3),
+  c()
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,i=4),
+  2:4
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=4),
   2:4
 )
 
@@ -800,7 +967,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=5),
+  5:7
+)
+
+expect_equal(
   get_var_index_multivariate('a',modSpec,i=6),
+  8:10
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('a',mapping,i=6),
   8:10
 )
 
@@ -811,7 +988,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,j=1),
+  11:12
+)
+
+expect_equal(
   get_var_index_multivariate('tau',modSpec,j=2),
+  13:15
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,j=2),
   13:15
 )
 
@@ -821,7 +1008,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,j=3),
+  16:17
+)
+
+expect_equal(
   get_var_index_multivariate('tau',modSpec,i=1),
+  11:12
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,i=1),
   11:12
 )
 
@@ -831,7 +1028,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,i=2),
+  13:15
+)
+
+expect_equal(
   get_var_index_multivariate('tau',modSpec,i=3),
+  16:17
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('tau',mapping,i=3),
   16:17
 )
 
@@ -842,7 +1049,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,j=1),
+  18
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,j=2),
+  19:20
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,j=2),
   19:20
 )
 
@@ -852,7 +1069,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,j=3),
+  21:22
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,k=1),
+  23
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,k=1),
   23
 )
 
@@ -862,7 +1089,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,k=2),
+  24
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,k=3),
+  25:26
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,k=3),
   25:26
 )
 
@@ -872,7 +1109,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=1),
+  18
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,i=2),
+  19:20
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=2),
   19:20
 )
 
@@ -882,7 +1129,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=3),
+  21:22
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,i=4),
+  23
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=4),
   23
 )
 
@@ -892,7 +1149,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=5),
+  24
+)
+
+expect_equal(
   get_var_index_multivariate('alpha',modSpec,i=6),
+  25:26
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('alpha',mapping,i=6),
   25:26
 )
 
@@ -903,7 +1170,17 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('z',mapping,i1=1,i2=3),
+  27
+)
+
+expect_equal(
   get_var_index_multivariate('z',modSpec,i1=2,i2=6),
+  28
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('z',mapping,i1=2,i2=6),
   28
 )
 
@@ -913,12 +1190,28 @@ expect_equal(
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('z',mapping,i1=1,i2=2),
+  29
+)
+
+
+expect_equal(
   get_var_index_multivariate('z',modSpec,i1=1,i2=4),
   30
 )
 
 expect_equal(
+  get_var_index_multivariate_fast('z',mapping,i1=1,i2=4),
+  30
+)
+
+expect_equal(
   get_var_index_multivariate('z',modSpec,i1=6,i2=4),
+  31
+)
+
+expect_equal(
+  get_var_index_multivariate_fast('z',mapping,i1=6,i2=4),
   31
 )
 
@@ -928,7 +1221,17 @@ expect_error(
 )
 
 expect_error(
+  get_var_index_multivariate_fast('z',mapping,i1=2,i2=2),
+  'i1 should not equal i2'
+)
+
+expect_error(
   get_var_index_multivariate('z',modSpec,i1=2,i2=5),
+  'Correlation requested for a variable with no correlations'
+)
+
+expect_error(
+  get_var_index_multivariate_fast('z',mapping,i1=2,i2=5),
   'Correlation requested for a variable with no correlations'
 )
 
@@ -1054,14 +1357,13 @@ expect_equal(
 )
 
 # TODO: add tests for is_cdep
-# TODO: add tests for get_multivariate_transform_categories
 
-# TODO: Check get_var_index_multivariate_fast and
-#       get_var_index_multivariate_mapping for all cases used for
-#       get_var_index_multivariate.
+# TODO: Some of the preceding tests of get_var_index_multivariate_fast
+#       are checked below. Eliminate this redundancy.
 
-# Test get_var_index_multivariate_mapping and get_var_index_multivariate_fast
-# on the preceding model
+
+# Test get_var_index_multivarate_mapping and get_var_index_multivariate_fast on
+# the preceding model
 
 # Build the mapping, checking that no error is thrown
 expect_error(
@@ -1159,6 +1461,10 @@ for(i1 in 1:(J+K-1)) {
       expect_equal(
         get_var_index_multivariate_fast('z',mapping,i1=i1,i2=i2),
         get_var_index_multivariate     ('z',modSpec,i1=i1,i2=i2)
+      )
+      expect_equal(
+        get_var_index_multivariate_fast('z',mapping,i1=i1,i2=i2),
+        get_var_index_multivariate_fast('z',mapping,i1=i2,i2=i1)
       )
     } else {
       expect_error(
@@ -1352,11 +1658,12 @@ expect_equal(
   calcData$keepList,
   list(reducedData1$keep,reducedData4$keep)
 )
-# TODO: check functionality of prep_for_neg_log_lik_multivariate 
 
-# Test get_univariate_indices with the same six variable model
-# Check calculations related to z
+# TODO: This applies to other functions. Address it.
 # A four variable (does not exercise all functionality; TODO: check also linOrd and hyperb)
+
+# Test get_z_full_fast with the same six variable model
+# Check calculations related to z
 modSpec <- list(meanSpec=c('logOrd','powLawOrd','powLaw','powLaw'))
 modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const')
 modSpec$J <- 2
@@ -1394,7 +1701,6 @@ expect_equal(
   z_full_direct
 )
 
-
 zMat_direct <- diag(modSpec$J+modSpec$K)
 zMat_direct[1,2] <- zcr
 zMat_direct[1,3] <- zns[1]
@@ -1413,7 +1719,6 @@ expect_equal(
   get_z_full_fast(th_y,mapping,asMatrix=T),
   zMat_direct
 )
-
 
 if(F) {
 # Test calc_noise_sd
@@ -1440,18 +1745,6 @@ expect_equal(
   calc_Sigma_fast(th_y,x[1],mapping),
   sigArray_direct[,,1]
 )
-
-if(F) {
-expect_equal(
-  calc_Sigma_fast(th_y,x[2],mapping),
-  sigArray_direct[,,2]
-)
-
-expect_equal(
-  calc_Sigma_fast(th_y,x[3],mapping),
-  sigArray_direct[,,3]
-)
-}
 
 # Test calc_neg_log_lik_multivariate_core
 
@@ -1661,10 +1954,12 @@ mappingList[[2]] <- mapping
 }
 
 # TODO:
-#prep_for_neg_log_lik_multivariate
-#calc_neg_log_like_vect_multivariate
-#calc_neg_log_like_multivariate
-#get_multivariate_transform_categories
 #renumber_groups
 #get_non_singleton_groups
-
+#calc_cond_gauss_int_inputs
+#calc_neg_log_lik_scalar_multivariate
+#calc_neg_log_lik_vect_multivariate_chunk_outer
+#calc_neg_log_lik_vect_multivariate_chunk_inner
+#calc_neg_log_like_vect_multivariate
+#calc_neg_log_like_multivariate
+#calc_cond_gauss_int_inputs

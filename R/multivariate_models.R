@@ -28,6 +28,22 @@ get_K <- function(modSpec) {
   }
 }
 
+#' Return the number of correlation terms (length of z)
+#'
+#' @param modSpec The model specification
+#' @return The number of correlation terms
+#' @export
+get_z_length <- function(modSpec) {
+  if( !('cdepSpec' %in% names(modSpec)) ) {
+    return(0)
+  }
+  if(tolower(modSpec$cdepSpec == 'indep')) {
+    return(0)
+  }
+  groupSizes <- as.vector(table(modSpec$cdepGroups))
+  numGroups  <- length(as.vector(table(modSpec$cdepGroups)))
+  return(sum(groupSizes > 1) + choose(numGroups,2))
+}
 
 #' Return True for conditionally dependent models and False for conditionally
 #' independent models. For the special case of a univariate model, False is
@@ -201,22 +217,6 @@ get_num_var_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,preceding=F)
 }
 
 
-#' Return the number of correlation terms (length of z)
-#'
-#' @param modSpec The model specification
-#' @return The number of correlation terms
-#' @export
-get_z_length <- function(modSpec) {
-  if( !('cdepSpec' %in% names(modSpec)) ) {
-    return(0)
-  }
-  if(tolower(modSpec$cdepSpec == 'indep')) {
-    return(0)
-  }
-  groupSizes <- as.vector(table(modSpec$cdepGroups))
-  numGroups  <- length(as.vector(table(modSpec$cdepGroups)))
-  return(sum(groupSizes > 1) + choose(numGroups,2))
-}
 
 #' Get the indices in the full parameter vector, th_y, of a named variable.
 #' Optionally, the variable index (j, k, or i) can be specified, or (for the
@@ -349,7 +349,192 @@ get_var_index_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,i1=NA,i2=N
   stop('This point should never be reached')
 }
 
+#' Build the mapping between inputs and indices needed by the function
+#' get_var_index_multivariate_fast.
+#'
+#' @param modSpec The model specification
+#' @return The mapping
+#' @export
+get_var_index_multivariate_mapping <- function(modSpec) {
+  # The following are valid input patterns:
+  #
+  # j   k   i  i1  i2
+  # 0   0   0   0   0    no index
+  # 1   0   0   0   0    j specified
+  # 0   1   0   0   0    k specified
+  # 0   0   1   0   0    i specified
+  # 0   0   0   1   1    i1 and i2 specified
 
+  J <- get_J(modSpec)
+  K <- get_K(modSpec)
+
+  # First pattern, no index
+  # For each variable, create a vector giving the index range
+  no_index       <- list(a=range(get_var_index_multivariate('a',modSpec)))
+  if(J > 0) {
+    no_index$tau <- range(get_var_index_multivariate('tau',modSpec))
+  } else {
+    no_index$tau <- NULL
+  }
+  no_index$alpha <- range(get_var_index_multivariate('alpha',modSpec))
+  if(is_cdep(modSpec)) {
+    no_index$z     <- range(get_var_index_multivariate('z',modSpec))
+  }
+  mapping <- list(no_index=no_index)
+
+  # Second pattern, j index
+  # Handled using the mapping for the fourth pattern, i index
+
+  # Third pattern, k index
+  # Handled using the mapping for the fourth pattern, i index
+
+  # Fourth pattern, i index
+  # For each variable, create a matrix giving the index range for i
+  # [Not applicable for z]
+  a_mat     <- matrix(NA,J+K,2)
+  if(J > 0) {
+    tau_mat   <- matrix(NA,J,2)
+  } else {
+    tau_mat <- NULL
+  }
+  alpha_mat <- matrix(NA,J+K,2)
+  for(i in 1:(J+K)) {
+    a_ind <- get_var_index_multivariate('a',modSpec,i=i)
+    if(length(a_ind) > 0) {
+      a_mat[i,1] <- min(a_ind)
+      a_mat[i,2] <- max(a_ind)
+    }
+
+    if( (J > 0) && (i <= J) ) {
+      tau_ind <- get_var_index_multivariate('tau',modSpec,i=i)
+      if(length(tau_ind) > 0) {
+        tau_mat[i,1] <- min(tau_ind)
+        tau_mat[i,2] <- max(tau_ind)
+      }
+    }
+
+    alpha_ind <- get_var_index_multivariate('alpha',modSpec,i=i)
+    if(length(alpha_ind) > 0) {
+      alpha_mat[i,1] <- min(alpha_ind)
+      alpha_mat[i,2] <- max(alpha_ind)
+    }
+  }
+  i_index <- list(a=a_mat,tau=tau_mat,alpha=alpha_mat)
+
+  if(!is_cdep(modSpec)) {
+    return(list(no_index=no_index,i_index=i_index,modSpec=modSpec))
+  }
+
+  # Fifth pattern, i1 and i2 indices
+  # Iterate over unique pairs to create a vector of length choose(J+K,2) of
+  # index values.
+  # [Not applicable for a, tau, or alpha]
+  i1_i2_index <- rep(NA,choose(J+K,2))
+
+  counter <- 0 # using a counter is probably clearer than using combinadic indexing
+  for(i1 in 1:(J+K-1)) {
+    for(i2 in (i1+1):(J+K)) {
+      counter <- counter + 1
+      if(!is.na(modSpec$cdepGroups[i1]) && !is.na(modSpec$cdepGroups[i2])) {
+        i1_i2_index[counter] <- get_var_index_multivariate('z',modSpec,i1=i1,i2=i2)
+      }
+    }
+  }
+
+  mapping <- list(no_index=no_index,i_index=i_index,i1_i2_index=i1_i2_index,modSpec=modSpec)
+  return(mapping)
+}
+
+#' Accomplishes the same task as get_var_index_multivariate, but using a
+#' pre-built mapping to increase the speed of the lookup.
+#'
+#' @param varName The variable name (a, tau, alpha, z)
+#' @param j The ordinal index
+#' @param k The continuous index
+#' @param i The overall index
+#' @param i1 The overall index for the first variable of a pair
+#' @param i2 The overall index for the second variable of a pair
+#' @return The indices in the full parameter vector, th_y
+#' @export
+get_var_index_multivariate_fast <- function(varName,mapping,j=NA,k=NA,i=NA,i1=NA,i2=NA) {
+
+
+  # The following are valid input patterns:
+  #
+  # j   k   i  i1  i2
+  # 0   0   0   0   0    no index
+  # 1   0   0   0   0    j specified
+  # 0   1   0   0   0    k specified
+  # 0   0   1   0   0    i specified
+  # 0   0   0   1   1    i1 and i2 specified
+
+  inputPattern <- !is.na(c(j,k,i,i1,i2))
+
+  J <- get_J(mapping$modSpec)
+  K <- get_K(mapping$modSpec)
+  if(all(inputPattern == c(F,F,F,F,F))) {
+    # no index
+    varRange <- mapping$no_index[[varName]]
+    return(varRange[1]:varRange[2])
+  } else if(all(inputPattern == c(T,F,F,F,F))) {
+    # j index
+    if((j < 1) || (J < j)) {
+      stop('j should be between 1 and J')
+    } else {
+      get_var_index_multivariate_fast(varName,mapping,i=j)
+    }
+  } else if(all(inputPattern == c(F,T,F,F,F))) {
+    # k index
+    if((k < 1) || (K < k)) {
+      stop('k should be between 1 and K')
+    } else {
+      get_var_index_multivariate_fast(varName,mapping,i=J+k)
+    }
+  } else if(all(inputPattern == c(F,F,T,F,F))) {
+    # i index
+    if(varName == 'a') {
+      lo <- mapping$i_index$a[i,1]
+      hi <- mapping$i_index$a[i,2]
+    } else if(varName == 'tau') {
+      lo <- mapping$i_index$tau[i,1]
+      hi <- mapping$i_index$tau[i,2]
+    } else if(varName == 'alpha') {
+      lo <- mapping$i_index$alpha[i,1]
+      hi <- mapping$i_index$alpha[i,2]
+  } else if(all(inputPattern == c(F,F,F,T,T))) {
+    # i1 and i2 indices specified
+    } else {
+      stop(paste0('Unsupported variable, ', varName, ' for i being specified'))
+    }
+    if(is.na(lo)) {
+      return(c())
+    } else {
+      return(lo:hi)
+    }
+  } else if(all(inputPattern == c(F,F,F,T,T))) {
+    # i1 and i2 indices
+    if(varName != 'z') {
+      stop('varName must be z if i1 and i2 are specified')
+    }
+
+    if(i1 == i2) {
+      stop('i1 should not equal i2')
+    }
+
+    if(is.na(mapping$modSpec$cdepGroups[i1]) || is.na(mapping$modSpec$cdepGroups[i2])) {
+      stop('Correlation requested for a variable with no correlations')
+    }
+
+    if(i1 < i2) {
+      combIndex <- elemToIndex(c(i1-1,i2-1),J+K) + 1
+    } else {
+      combIndex <- elemToIndex(c(i2-1,i1-1),J+K) + 1
+    }
+    return(mapping$i1_i2_index[combIndex])
+  } else {
+    stop('Unsupported input pattern for index variables. See yada documentation')
+  }
+}
 
 #' For a multivariate model, get the indices in the full parameter vector
 #' (th_y) correspdoning to a given univariate model. The correlation term is
@@ -405,75 +590,6 @@ get_univariate_indices <- function(modSpec,j=NA,k=NA,i=NA) {
 #
 #  return(as.vector(negLogLikVect))
 #}
-
-
-#' Prepare for the negative log-likelihood calculations by creating indexing
-#' objects to speed up execution.
-#'
-#' @param x The independent variable
-#' @param Y The matrix of responses
-#' @param modSpec The model specification
-#' @export
-prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
-  N <- length(x)
-  if(N != ncol(Y)) {
-    stop('length of x should equal the number of columns in Y')
-  }
-
-  J <- yada::get_J(modSpec)
-  K <- yada::get_K(modSpec)
-  if(nrow(Y) != J+K) {
-    stop('J+K should equal the number of rows in Y')
-  }
-
-  if(any(is.na(x))) {
-    stop('x should not contain missing values')
-  }
-
-  if(any(colSums(is.na(Y)) == (J+K))) {
-    stop('Y should not contain observations with all missing values')
-  }
-
-  # Handle special cases where the meanSpec is logOrd and x is 0
-  Y0 <- Y
-  ind_log <- which(modSpec$meanSpec == 'logOrd')
-  if(length(ind_log) > 0) {
-    for(j in ind_log) {
-      yj <- Y[j,]
-      xj <- x
-      indj <- which(!is.na(yj))
-      xj <- xj[indj]
-      yj <- yj[indj]
-      if(any((xj == 0) & (yj > 0))) {
-        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m=0'))
-      }
-      matches <- which((xj == 0) & (yj == 0))
-      if(length(matches) > 0) {
-        Y[j,indj[matches]] <- NA
-      }
-    }
-  }
-
-  # Call remove_missing_variables to populate the following lists:
-  y_list <- list()
-  modSpecList  <- list()
-  mappingList  <- list()
-  mapping0List <- list()
-  indList      <- list()
-  keepList     <- list()
-  for(n in 1:N) {
-    # Remove missing variables
-    remap <- remove_missing_variables(Y[,n],modSpec)
-    y_list[[n]] <- remap$y
-    modSpecList[[n]]  <- remap$modSpec
-    mappingList[[n]]  <- remap$mapping
-    mapping0List[[n]] <- remap$mapping0
-    indList[[n]]      <- remap$ind
-    keepList[[n]]     <- remap$keep
-  }
-
-  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
-}
 
 #' For a single observation with response vector y0 and model specification
 #' modSpec0, modify modSpec0 to account for missing observations in y0, which
@@ -594,6 +710,97 @@ remove_missing_variables <- function(y0,modSpec0) {
   return(list(y=y,modSpec=modSpec,mapping=mapping,mapping0=mapping0,ind=ind,keep=keep))
 }
 
+#' Prepare for the negative log-likelihood calculations by creating indexing
+#' objects to speed up execution.
+#'
+#' @param x The independent variable
+#' @param Y The matrix of responses
+#' @param modSpec The model specification
+#' @export
+prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
+  N <- length(x)
+  if(N != ncol(Y)) {
+    stop('length of x should equal the number of columns in Y')
+  }
+
+  J <- yada::get_J(modSpec)
+  K <- yada::get_K(modSpec)
+  if(nrow(Y) != J+K) {
+    stop('J+K should equal the number of rows in Y')
+  }
+
+  if(any(is.na(x))) {
+    stop('x should not contain missing values')
+  }
+
+  if(any(colSums(is.na(Y)) == (J+K))) {
+    stop('Y should not contain observations with all missing values')
+  }
+
+  # Handle special cases where the meanSpec is logOrd and x is 0
+  Y0 <- Y
+  ind_log <- which(modSpec$meanSpec == 'logOrd')
+  if(length(ind_log) > 0) {
+    for(j in ind_log) {
+      yj <- Y[j,]
+      xj <- x
+      indj <- which(!is.na(yj))
+      xj <- xj[indj]
+      yj <- yj[indj]
+      if(any((xj == 0) & (yj > 0))) {
+        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m=0'))
+      }
+      matches <- which((xj == 0) & (yj == 0))
+      if(length(matches) > 0) {
+        Y[j,indj[matches]] <- NA
+      }
+    }
+  }
+
+  # Call remove_missing_variables to populate the following lists:
+  y_list <- list()
+  modSpecList  <- list()
+  mappingList  <- list()
+  mapping0List <- list()
+  indList      <- list()
+  keepList     <- list()
+  for(n in 1:N) {
+    # Remove missing variables
+    remap <- remove_missing_variables(Y[,n],modSpec)
+    y_list[[n]] <- remap$y
+    modSpecList[[n]]  <- remap$modSpec
+    mappingList[[n]]  <- remap$mapping
+    mapping0List[[n]] <- remap$mapping0
+    indList[[n]]      <- remap$ind
+    keepList[[n]]     <- remap$keep
+  }
+
+  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
+}
+
+#' @export
+get_z_full_fast <- function(th_y,mapping,asMatrix=F) {
+
+  J <- yada::get_J(mapping$modSpec)
+  K <- yada::get_K(mapping$modSpec)
+
+  z_full <- rep(0,choose(J+K,2))
+  B <- which(!is.na(mapping$i1_i2_index))
+  ind_z <- mapping$i1_i2_index[B]
+  z_full[B] <- th_y[ind_z]
+
+  if(!asMatrix) {
+    return(z_full)
+  }
+
+  zMat <- diag(J+K)
+  zMat[upper.tri(zMat)] <- z_full
+  zMat <- t(zMat)
+  zMat[upper.tri(zMat)] <- z_full
+  zMat <- t(zMat)
+
+  return(zMat)
+}
 
 #' @export
 calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
@@ -648,19 +855,6 @@ calc_neg_log_lik_vect_multivariate_chunk_inner <- function(th_y,calcData) {
   }
   return(negLogLikVect)
 }
-
-#calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
-#  if(!all(is.na(tfCatVect))) {
-#    th_y <- param_unconstr2constr(th_y,tfCatVect)
-#  }
-#
-#  N <- length(calcData$indList)
-#  '%dopar%' <- foreach::'%dopar%'
-#  negLogLikVect <- foreach::foreach(n=1:N, .combine=cbind) %dopar% {
-#    negLogLik <- calc_neg_log_lik_multivariate_core(th_y[calcData$indList[[n]]],calcData$x[n],calcData$y_list[[n]],calcData$mappingList[[n]],approx=approx)
-#  }
-#  return(as.vector(negLogLikVect))
-#}
 
 #' @export
 calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
@@ -819,321 +1013,6 @@ get_multivariate_transform_categories <- function(modSpec) {
   }
   return(tfCatVect)
 }
-
-#' Accomplishes the same task as get_var_index_multivariate, but using a
-#' pre-built mapping to increase the speed of the lookup. To speed things up,
-#' minimal error checking is done.
-#'
-#' @param varName The variable name (a, tau, alpha, z)
-#' @param j The ordinal index
-#' @param k The continuous index
-#' @param i The overall index
-#' @param i1 The overall index for the first variable of a pair
-#' @param i2 The overall index for the second variable of a pair
-#' @return The indices in the full parameter vector, th_y
-#' @export
-get_var_index_multivariate_fast <- function(varName,mapping,j=NA,k=NA,i=NA,i1=NA,i2=NA) {
-
-
-  # The following are valid input patterns:
-  #
-  # j   k   i  i1  i2
-  # 0   0   0   0   0    no index
-  # 1   0   0   0   0    j specified
-  # 0   1   0   0   0    k specified
-  # 0   0   1   0   0    i specified
-  # 0   0   0   1   1    i1 and i2 specified
-
-  inputPattern <- !is.na(c(j,k,i,i1,i2))
-
-  J <- get_J(mapping$modSpec)
-  K <- get_K(mapping$modSpec)
-  if(all(inputPattern == c(F,F,F,F,F))) {
-    # no index
-    varRange <- mapping$no_index[[varName]]
-    return(varRange[1]:varRange[2])
-  } else if(all(inputPattern == c(T,F,F,F,F))) {
-    # j index
-    if((j < 1) || (J < j)) {
-      stop('j should be between 1 and J')
-    } else {
-      get_var_index_multivariate_fast(varName,mapping,i=j)
-    }
-  } else if(all(inputPattern == c(F,T,F,F,F))) {
-    # k index
-    if((k < 1) || (K < k)) {
-      stop('k should be between 1 and K')
-    } else {
-      get_var_index_multivariate_fast(varName,mapping,i=J+k)
-    }
-  } else if(all(inputPattern == c(F,F,T,F,F))) {
-    # i index
-    if(varName == 'a') {
-      lo <- mapping$i_index$a[i,1]
-      hi <- mapping$i_index$a[i,2]
-    } else if(varName == 'tau') {
-      lo <- mapping$i_index$tau[i,1]
-      hi <- mapping$i_index$tau[i,2]
-    } else if(varName == 'alpha') {
-      lo <- mapping$i_index$alpha[i,1]
-      hi <- mapping$i_index$alpha[i,2]
-  } else if(all(inputPattern == c(F,F,F,T,T))) {
-    # i1 and i2 indices specified
-    } else {
-      stop(paste0('Unsupported variable, ', varName, ' for i being specified'))
-    }
-    if(is.na(lo)) {
-      return(c())
-    } else {
-      return(lo:hi)
-    }
-  } else if(all(inputPattern == c(F,F,F,T,T))) {
-    # i1 and i2 indices
-    if(varName != 'z') {
-      stop('varName must be z if i1 and i2 are specified')
-    }
- 
-    if(is.na(mapping$modSpec$cdepGroups[i1]) || is.na(mapping$modSpec$cdepGroups[i2])) {
-      stop('Correlation requested for a variable with no correlations')
-    }
-    if(i1 < i2) {
-      combIndex <- elemToIndex(c(i1-1,i2-1),J+K) + 1
-    } else {
-      combIndex <- elemToIndex(c(i2-1,ii-1),J+K) + 1
-    }
-    return(mapping$i1_i2_index[combIndex])
-  } else {
-    stop('Unsupported input pattern for index variables. See yada documentation')
-  }
-}
-
-#' Build the mapping between inputs and indices needed by the function
-#' get_var_index_multivariate_fast.
-#'
-#' @param modSpec The model specification
-#' @return The mapping
-#' @export
-get_var_index_multivariate_mapping <- function(modSpec) {
-  # The following are valid input patterns:
-  #
-  # j   k   i  i1  i2
-  # 0   0   0   0   0    no index
-  # 1   0   0   0   0    j specified
-  # 0   1   0   0   0    k specified
-  # 0   0   1   0   0    i specified
-  # 0   0   0   1   1    i1 and i2 specified
-
-  J <- get_J(modSpec)
-  K <- get_K(modSpec)
-
-  # First pattern, no index
-  # For each variable, create a vector giving the index range
-  no_index       <- list(a=range(get_var_index_multivariate('a',modSpec)))
-  if(J > 0) {
-    no_index$tau <- range(get_var_index_multivariate('tau',modSpec))
-  } else {
-    no_index$tau <- NULL
-  }
-  no_index$alpha <- range(get_var_index_multivariate('alpha',modSpec))
-  if(is_cdep(modSpec)) {
-    no_index$z     <- range(get_var_index_multivariate('z',modSpec))
-  }
-  mapping <- list(no_index=no_index)
-
-  # Second pattern, j index
-  # Handled using the mapping for the fourth pattern, i index
-
-  # Third pattern, k index
-  # Handled using the mapping for the fourth pattern, i index
-
-  # Fourth pattern, i index
-  # For each variable, create a matrix giving the index range for i
-  # [Not applicable for z]
-  a_mat     <- matrix(NA,J+K,2)
-  if(J > 0) {
-    tau_mat   <- matrix(NA,J,2)
-  } else {
-    tau_mat <- NULL
-  }
-  alpha_mat <- matrix(NA,J+K,2)
-  for(i in 1:(J+K)) {
-    a_ind <- get_var_index_multivariate('a',modSpec,i=i)
-    if(length(a_ind) > 0) {
-      a_mat[i,1] <- min(a_ind)
-      a_mat[i,2] <- max(a_ind)
-    }
-
-    if( (J > 0) && (i <= J) ) {
-      tau_ind <- get_var_index_multivariate('tau',modSpec,i=i)
-      if(length(tau_ind) > 0) {
-        tau_mat[i,1] <- min(tau_ind)
-        tau_mat[i,2] <- max(tau_ind)
-      }
-    }
-
-    alpha_ind <- get_var_index_multivariate('alpha',modSpec,i=i)
-    if(length(alpha_ind) > 0) {
-      alpha_mat[i,1] <- min(alpha_ind)
-      alpha_mat[i,2] <- max(alpha_ind)
-    }
-  }
-  i_index <- list(a=a_mat,tau=tau_mat,alpha=alpha_mat)
-
-  if(!is_cdep(modSpec)) {
-    return(list(no_index=no_index,i_index=i_index,modSpec=modSpec))
-  }
-
-  # Fifth pattern, i1 and i2 indices
-  # Iterate over unique pairs to create a vector of length choose(J+K,2) of
-  # index values.
-  # [Not applicable for a, tau, or alpha]
-  i1_i2_index <- rep(NA,choose(J+K,2))
-
-  counter <- 0 # using a counter is probably clearer than using combinadic indexing
-  for(i1 in 1:(J+K-1)) {
-    for(i2 in (i1+1):(J+K)) {
-      counter <- counter + 1
-      if(!is.na(modSpec$cdepGroups[i1]) && !is.na(modSpec$cdepGroups[i2])) {
-        i1_i2_index[counter] <- get_var_index_multivariate('z',modSpec,i1=i1,i2=i2)
-      }
-    }
-  }
-
-  mapping <- list(no_index=no_index,i_index=i_index,i1_i2_index=i1_i2_index,modSpec=modSpec)
-  return(mapping)
-}
-
-
-#' @export
-get_z_full_fast <- function(th_y,mapping,asMatrix=F) {
-
-  J <- yada::get_J(mapping$modSpec)
-  K <- yada::get_K(mapping$modSpec)
-
-  z_full <- rep(0,choose(J+K,2))
-  B <- which(!is.na(mapping$i1_i2_index))
-  ind_z <- mapping$i1_i2_index[B]
-  z_full[B] <- th_y[ind_z]
-
-  if(!asMatrix) {
-    return(z_full)
-  }
-
-  zMat <- diag(J+K)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
-
-  return(zMat)
-}
-
-#calc_Sigma_fast <- function(th_y,x,mapping) {
-#
-#  if(length(x) != 1) {
-#    stop('calc_Sigma_fast is only intended to work on a single observation')
-#  }
-#
-#  J <- yada::get_J(mapping$modSpec)
-#  K <- yada::get_K(mapping$modSpec)
-#
-#  zMat <- get_z_full_fast(th_y,mapping,asMatrix=T)
-#
-#  noiseVect <- rep(NA,J+K)
-#  if(J > 0) {
-#    for(j in 1:J) {
-#      th_v <- th_y[get_univariate_indices(mapping$modSpec,j=j)] # would be faster to use mapping for this
-#      modSpec_j <- list(meanSpec=mapping$modSpec$meanSpec[j])
-#      modSpec_j$noiseSpec <- mapping$modSpec$noiseSpec[j]
-#      modSpec_j$J <- 1
-#      modSpec_j$M <- modSpec$M[j]
-#      noiseVect[j] <- calc_noise_univariate_ord(x,th_v,modSpec_j)
-#    }
-#  }
-#
-#  if(K > 0) {
-#    for(k in 1:K) {
-#      th_w <- th_y[get_univariate_indices(mapping$modSpec,k=k)]
-#      modSpec_k <- list(meanSpec=mapping$modSpec$meanSpec[J+k])
-#      modSpec_k$noiseSpec <- mapping$modSpec$noiseSpec[J+k]
-#      modSpec_k$K <- 1
-#      noiseVect[J+k] <- calc_noise_univariate_cont(x,th_w,modSpec_k)
-#    }
-#  }
-#
-#  covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
-#  covMat <- covMat * zMat
-#
-#  return(covMat)
-#}
-
-#calc_noise_vect_fast <- function(th_y,x,mapping) {
-#
-#  if(length(x) != 1) {
-#    stop('calc_noise_vect_fast is only intended to work on a single observation')
-#  }
-#
-#  J <- yada::get_J(mapping$modSpec)
-#  K <- yada::get_K(mapping$modSpec)
-#
-#  noiseVect <- rep(NA,J+K)
-#  if(J > 0) {
-#    for(j in 1:J) {
-#      th_v <- th_y[get_univariate_indices(mapping$modSpec,j=j)] # would be faster to use mapping for this
-#      modSpec_j <- list(meanSpec=mapping$modSpec$meanSpec[j])
-#      modSpec_j$noiseSpec <- mapping$modSpec$noiseSpec[j]
-#      modSpec_j$J <- 1
-#      modSpec_j$M <- mapping$modSpec$M[j]
-#      noiseVect[j] <- calc_noise_univariate_ord(x,th_v,modSpec_j)
-#    }
-#  }
-#
-#  if(K > 0) {
-#    for(k in 1:K) {
-#      th_w <- th_y[get_univariate_indices(mapping$modSpec,k=k)]
-#      modSpec_k <- list(meanSpec=mapping$modSpec$meanSpec[J+k])
-#      modSpec_k$noiseSpec <- mapping$modSpec$noiseSpec[J+k]
-#      modSpec_k$K <- 1
-#      noiseVect[J+k] <- calc_noise_univariate_cont(x,th_w,modSpec_k)
-#    }
-#  }
-#
-#  return(noiseVect)
-#}
-
-#calc_mean_vect_fast <- function(th_y,x,mapping) {
-#
-#  if(length(x) != 1) {
-#    stop('calc_mean_vect_fast is only intended to work on a single observation')
-#  }
-#
-#  J <- yada::get_J(mapping$modSpec)
-#  K <- yada::get_K(mapping$modSpec)
-#
-#  meanVect <- rep(NA,J+K)
-#  if(J > 0) {
-#    for(j in 1:J) {
-#      th_v <- th_y[get_univariate_indices(mapping$modSpec,j=j)] # would be faster to use mapping for this
-#      modSpec_j <- list(meanSpec=mapping$modSpec$meanSpec[j])
-#      modSpec_j$noiseSpec <- mapping$modSpec$noiseSpec[j]
-#      modSpec_j$J <- 1
-#      modSpec_j$M <- modSpec$M[j]
-#      meanVect[j] <- calc_mean_univariate_ord(x,th_v,modSpec_j)
-#    }
-#  }
-#
-#  if(K > 0) {
-#    for(k in 1:K) {
-#      th_w <- th_y[get_univariate_indices(mapping$modSpec,k=k)]
-#      modSpec_k <- list(meanSpec=mapping$modSpec$meanSpec[J+k])
-#      modSpec_k$noiseSpec <- mapping$modSpec$noiseSpec[J+k]
-#      modSpec_k$K <- 1
-#      meanVect[J+k]  <- calc_mean_univariate_cont(x,th_w,modSpec_k)
-#    }
-#  }
-#
-#  return(meanVect)
-#}
 
 #' @export
 renumber_groups <- function(groups0) {

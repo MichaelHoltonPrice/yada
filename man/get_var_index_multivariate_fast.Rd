@@ -3,8 +3,7 @@
 \name{get_var_index_multivariate_fast}
 \alias{get_var_index_multivariate_fast}
 \title{Accomplishes the same task as get_var_index_multivariate, but using a
-pre-built mapping to increase the speed of the lookup. To speed things up,
-minimal error checking is done.}
+pre-built mapping to increase the speed of the lookup.}
 \usage{
 get_var_index_multivariate_fast(
   varName,
@@ -34,6 +33,5 @@ The indices in the full parameter vector, th_y
 }
 \description{
 Accomplishes the same task as get_var_index_multivariate, but using a
-pre-built mapping to increase the speed of the lookup. To speed things up,
-minimal error checking is done.
+pre-built mapping to increase the speed of the lookup.
 }
