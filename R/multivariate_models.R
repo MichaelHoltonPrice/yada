@@ -633,6 +633,7 @@ remove_missing_variables <- function(y0,modSpec0) {
   }
   modSpec$cdepSpec <- modSpec0$cdepSpec
 
+  if(modSpec$cdepSpec == 'dep') {
   groups0         <- modSpec0$cdepGroups
   groups0_reduced <- modSpec0$cdepGroups[keep]
 
@@ -656,6 +657,7 @@ remove_missing_variables <- function(y0,modSpec0) {
 
   new2old_group <- uniqueGroups0_reduced
   modSpec$cdepGroups <- groups
+  }
 
   mapping0 <- get_var_index_multivariate_mapping(modSpec0)
   mapping  <- get_var_index_multivariate_mapping(modSpec)
@@ -686,6 +688,7 @@ remove_missing_variables <- function(y0,modSpec0) {
     }
   }
 
+  if(modSpec$cdepSpec == 'dep') {
   # Add non-singleton groups
   nonSingGroups0 <- get_non_singleton_groups(groups0)
   nonSingGroups  <- get_non_singleton_groups(groups)
@@ -704,6 +707,7 @@ remove_missing_variables <- function(y0,modSpec0) {
       g2_0 <- new2old_group[g2]
       ind <- c(ind,numBefore + length(nonSingGroups0) + elemToIndex(c(g1_0,g2_0)-1,Ng0) + 1)
     }
+  }
   }
   ind <- sort(ind)
 
@@ -758,24 +762,28 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
   }
 
   # Call remove_missing_variables to populate the following lists:
-  y_list <- list()
-  modSpecList  <- list()
-  mappingList  <- list()
-  mapping0List <- list()
-  indList      <- list()
-  keepList     <- list()
+  calcData <- list()
+#  y_list <- list()
+#  modSpecList  <- list()
+#  mappingList  <- list()
+#  mapping0List <- list()
+#  indList      <- list()
+#  keepList     <- list()
   for(n in 1:N) {
     # Remove missing variables
     remap <- remove_missing_variables(Y[,n],modSpec)
-    y_list[[n]] <- remap$y
-    modSpecList[[n]]  <- remap$modSpec
-    mappingList[[n]]  <- remap$mapping
-    mapping0List[[n]] <- remap$mapping0
-    indList[[n]]      <- remap$ind
-    keepList[[n]]     <- remap$keep
+#    y_list[[n]] <- remap$y
+#    modSpecList[[n]]  <- remap$modSpec
+#    mappingList[[n]]  <- remap$mapping
+#    mapping0List[[n]] <- remap$mapping0
+#    indList[[n]]      <- remap$ind
+#    keepList[[n]]     <- remap$keep
+    calcData_n <- list(x=x[n],y=remap$y,modSpec=remap$modSpec,mapping=remap$mapping,mapping0=remap$mapping0,ind=remap$ind,keep=remap$keep)
+    calcData[[n]] <- calcData_n
   }
 
-  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
+  return(calcData)
+#  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
 }
 
 #' @export
@@ -813,7 +821,7 @@ calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   negLogLikVect <- foreach(n=1:N,.combine=cbind,.packages=c('yada','ksoptim')) %dopar% {
     negLogLik_n <- calc_neg_log_lik_scalar_multivariate(th_y,calcData[[n]])
   }
-  return(negLogLikVect)
+  return(as.vector(negLogLikVect))
 }
 
 #' @export
@@ -857,113 +865,9 @@ calc_neg_log_lik_vect_multivariate_chunk_inner <- function(th_y,calcData) {
 }
 
 #' @export
-calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA,approx=F) {
-  negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect,approx=approx)
+calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA) {
+  negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect)
   return(sum(negLogLikVect))
-}
-
-#' Calculate the vector of negative log-likelihoods values for a multivariate
-#' model. To increase execution speed, the calculation data (calcData) output
-#' by prep_for_neg_log_lik_multivariate is used.
-#'
-#' @param th_y The parameter vector [a,tau,alpha,z]
-#' @param x The independent variable
-#' @param y The vector of responses
-#' @param mapping The index mapping for rapid calculations
-#' @return The negative log-likelihood
-#' @export
-calc_neg_log_lik_multivariate_core <- function(th_y,x,y,mapping,approx=F) {
-  J <- yada::get_J(mapping$modSpec)
-  K <- yada::get_K(mapping$modSpec)
-
-  if( (J == 0) && (K == 0)) {
-    stop('J and K cannot both be zero')
-  }
-
-  # Calculate the inputs to the conditional Gaussian integral using a for loop.
-  # These inputs are meanVect, noiseVect, lo, and hi.
-  meanVect  <- rep(NA,J+K)
-  noiseVect <- rep(NA,J+K)
-  if(J > 0) {
-    lo <- rep(-Inf,J)
-    hi <- rep( Inf,J)
-    for(j in 1:J) {
-      tau_j     <- th_y[get_var_index_multivariate_fast('tau'  ,mapping,j=j)]
-      if(mapping$modSpec$meanSpec[j] == 'powLawOrd') {
-        a_j       <- th_y[get_var_index_multivariate_fast('a'    ,mapping,j=j)]
-        meanVect[j] <- x^a_j
-      } else if(mapping$modSpec$meanSpec[j] == 'logOrd') {
-        meanVect[j] <- log(x)
-      } else if(mapping$modSpec$meanSpec[j] == 'linOrd') {
-        meanVect[j] <- x
-      } else {
-        stop(paste0('Unsupported meanSpec = ',mapping$modSpec$meanSpec[j]))
-      }
-
-      alpha_j   <- th_y[get_var_index_multivariate_fast('alpha',mapping,j=j)]
-      if(mapping$modSpec$noiseSpec[j] == 'const') {
-        noiseVect[j] <- alpha_j
-      } else if(mapping$modSpec$noiseSpec[j] == 'lin_pos_int') {
-        noiseVect[j] <- alpha_j[1]*(1 + x*alpha_j[2])
-      } else {
-        stop(paste0('Unsupported noiseSpec = ',mapping$modSpec$noiseSpec[j]))
-      }
-
-      tau_j <- th_y[get_var_index_multivariate_fast('tau',mapping,j=j)]
-      if(y[j] > 0) {
-        lo[j] <- tau_j[y[j]]
-      }
-      if(y[j] < mapping$modSpec$M[j]) {
-        hi[j] <- tau_j[y[j]+1]
-      }
-    }
-  } else {
-    lo <- c()
-    hi <- c()
-  }
-
-  if(K > 0) {
-    for(k in 1:K) {
-      a_k       <- th_y[get_var_index_multivariate_fast('a'    ,mapping,k=k)]
-      alpha_k   <- th_y[get_var_index_multivariate_fast('alpha',mapping,k=k)]
-
-      if(mapping$modSpec$meanSpec[J+k] == 'powLaw') {
-        meanVect[J+k] <- a_k[2]*x^a_k[1] + a_k[3]
-      } else {
-        stop(paste0('Unsupported meanSpec = ',mapping$modSpec$meanSpec[J+k]))
-      }
-
-      if(mapping$modSpec$noiseSpec[J+k] == 'const') {
-        noiseVect[J+k] <- alpha_k
-      } else if(mapping$modSpec$noiseSpec[J+k] == 'lin_pos_int') {
-        noiseVect[J+k] <- alpha_k[1]*(1 + x*alpha_k[2])
-      } else {
-        stop(paste0('Unsupported noiseSpec = ',mapping$modSpec$noiseSpec[J+k]))
-      }
-    }
-    y_giv <- y[J + (1:K)]
-  } else {
-    y_giv <- c()
-  }
-
-  z_full <- rep(0,choose(J+K,2))
-  B <- which(!is.na(mapping$i1_i2_index))
-  ind_z <- mapping$i1_i2_index[B]
-  z_full[B] <- th_y[ind_z]
-
-  zMat <- diag(J+K)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
-  covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
-  covMat <- covMat * zMat
-
-  if(approx) {
-    return(-calc_conditional_gaussian_integral_approx(meanVect,covMat,lo=lo,hi=hi,y_giv=y_giv,log=T))
-  } else {
-    return(-calc_conditional_gaussian_integral(meanVect,covMat,lo=lo,hi=hi,y_giv=y_giv,log=T))
-  }
 }
 
 #' For a given model specification of a multivariate model, return a vector that
@@ -1014,6 +918,12 @@ get_multivariate_transform_categories <- function(modSpec) {
   return(tfCatVect)
 }
 
+#' Renumber the groups in the input vector group0 so that the group numbering
+#' is sequential integers (this is typically done after subsetting an original
+#' group vector).
+#'
+#' @param groups0 The starting group vector, probably with gaps in it
+#' @return The updated group vector
 #' @export
 renumber_groups <- function(groups0) {
   uniqueGroups <- sort(unique(groups0[!is.na(groups0)]))
@@ -1026,16 +936,20 @@ renumber_groups <- function(groups0) {
   return(groups)
 }
 
+#' groupVect is a vector assigning each of its elements to a unique group.
+#' Return the non-singleton groups in groupVect -- that is, the groups with more
+#' than one member
+#'
+#' For example:
+#' groupVect <- c(1,2,NA,4,1,3,3)
+#' print(get_non_singleton_groups(groupVect))
+#' [1] 1 3
+#'
+#' @param groupVect The vector of group assignments
+#' @return A vector of non-singlteon groups
 #' @export
 get_non_singleton_groups <- function(groupVect) {
-  # groupVect is a vector assigning each of its elements to a unique group.
-  # Return the non-singleton groups in groupVect -- that is, the groups with
-  # more than one member
-  #
-  # For example:
-  # groupVect <- c(1,2,NA,4,1,3,3)
-  # print(get_non_singleton_groups(groupVect))
-  # [1] 1 3
+
   counts <- table(groupVect)
   return(sort(as.numeric(names(counts))[counts > 1]))
 }

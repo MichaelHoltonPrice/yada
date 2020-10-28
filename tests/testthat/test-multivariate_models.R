@@ -3,6 +3,7 @@ registerDoParallel(detectCores()-2)
 # Test yada::get_J
 # Test yada::get_K
 # Test yada::get_z_length
+# Test yada::is_cdep
 # Test yada::get_num_var_multivariate
 
 # A one variable, ordinal model -- powLawOrd / const
@@ -1356,8 +1357,6 @@ expect_equal(
     2,2,2,2,2) # z
 )
 
-# TODO: add tests for is_cdep
-
 # TODO: Some of the preceding tests of get_var_index_multivariate_fast
 #       are checked below. Eliminate this redundancy.
 
@@ -1612,9 +1611,16 @@ expect_error(
 )
 
 expect_equal(
-  names(calcData),
-  c("x","y_list","modSpecList","mappingList","mapping0List","indList","keepList")
+  length(calcData),
+  2
 )
+
+for(n in 1:length(calcData)) {
+  expect_equal(
+    names(calcData[[n]]),
+    c("x","y","modSpec","mapping","mapping0","ind","keep")
+  )
+}
 
 # update y0_4 for the special case with logOrd, then call
 # remove_missing_variables directly (this is to check calcData)
@@ -1625,45 +1631,43 @@ expect_error(
 )
 
 expect_equal(
-  calcData$x,
+  unlist(lapply(calcData,function(cd){cd$x})),
   x
 )
 
 expect_equal(
-  calcData$y_list,
+  lapply(calcData,function(cd){cd$y}),
   list(reducedData1$y,reducedData4$y)
 )
 
 expect_equal(
-  calcData$modSpecList,
+  lapply(calcData,function(cd){cd$modSpec}),
   list(reducedData1$modSpec,reducedData4$modSpec)
 )
 
 expect_equal(
-  calcData$mappingList,
+  lapply(calcData,function(cd){cd$mapping}),
   list(reducedData1$mapping,reducedData4$mapping)
 )
 
 expect_equal(
-  calcData$mapping0List,
+  lapply(calcData,function(cd){cd$mapping0}),
   list(reducedData1$mapping0,reducedData4$mapping0)
 )
 
 expect_equal(
-  calcData$indList,
+  lapply(calcData,function(cd){cd$ind}),
   list(reducedData1$ind,reducedData4$ind)
 )
 
 expect_equal(
-  calcData$keepList,
+  lapply(calcData,function(cd){cd$keep}),
   list(reducedData1$keep,reducedData4$keep)
 )
 
-# TODO: This applies to other functions. Address it.
-# A four variable (does not exercise all functionality; TODO: check also linOrd and hyperb)
 
-# Test get_z_full_fast with the same six variable model
-# Check calculations related to z
+# Test get_z_full_fast with a four variable model
+# [Does not exercise all functionality; TODO: check also linOrd and hyperb]
 modSpec <- list(meanSpec=c('logOrd','powLawOrd','powLaw','powLaw'))
 modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const')
 modSpec$J <- 2
@@ -1720,33 +1724,34 @@ expect_equal(
   zMat_direct
 )
 
-if(F) {
-# Test calc_noise_sd
-x <- c(0,2,4)
-N <- length(x)
-sdMat_direct <- matrix(NA,4,N)
-#zz <- try(calc_noise_vect_fast(th_y,x[1],mapping))
-sdMat_direct[,1] <- calc_noise_vect_fast(th_y,x[1],mapping)
-sdMat_direct[,2] <- calc_noise_vect_fast(th_y,x[2],mapping)
-sdMat_direct[,3] <- calc_noise_vect_fast(th_y,x[3],mapping)
-
-
-x <- c(0,2,4)
-sigArray_direct <- array(NA,c(4,4,length(x)))
-sigArray_direct[,,1] <- sdMat_direct[,1]%*%  t(sdMat_direct[,1]) * zMat_direct
-sigArray_direct[,,2] <- sdMat_direct[,2]%*%  t(sdMat_direct[,2]) * zMat_direct
-sigArray_direct[,,3] <- sdMat_direct[,3]%*%  t(sdMat_direct[,3]) * zMat_direct
-
-z <- try(calc_Sigma_fast(th_y,x[1],mapping))
-print('')
-print(z)
-print(sigArray_direct[,,1])
+# Test renumber_groups
 expect_equal(
-  calc_Sigma_fast(th_y,x[1],mapping),
-  sigArray_direct[,,1]
+  renumber_groups(1:10),
+  1:10
 )
 
-# Test calc_neg_log_lik_multivariate_core
+expect_equal(
+  renumber_groups(c(2,NA,2,1,NA,4,NA)),
+  c(2,NA,2,1,NA,3,NA)
+)
+
+# Test get_non_singleton_groups
+expect_equal(
+  get_non_singleton_groups(1:10),
+  numeric()
+)
+
+expect_equal(
+  get_non_singleton_groups(c(1,2,NA,4,1,3,3)),
+  c(1,3)
+)
+
+# Test the following functions related to the negative log-likelihood
+# calculation:
+# calc_cond_gauss_int_inputs
+# calc_neg_log_lik_vect_multivariate
+# calc_neg_log_lik_multivariate
+# [Does not exercise all functionality; TODO: check also linOrd and hyperb]
 
 rho1 <- .65
 rho2 <- .75
@@ -1775,6 +1780,7 @@ modSpec$J <- 1
 modSpec$K <- 0
 modSpec$M <- 2
 modSpec$noiseSpec  <- 'const'
+modSpec$cdepSpec <- 'indep' # necessary for prep_for_neg_log_lik_multivariate
 
 th_y <- c(rho1,tau1,s1)
 
@@ -1783,44 +1789,150 @@ expect_error(
   NA
 )
 
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,0,mapping),
-  -log(pnorm((tau1[1]-x1^rho1)/s1))
+expect_error(
+  tfCatVect <- get_multivariate_transform_categories(mapping$modSpec),
+  NA
+)
+
+expect_error(
+  th_y_bar <- param_constr2unconstr(th_y,tfCatVect),
+  NA
+)
+
+etaVect_direct <- c(
+                    -log(pnorm((tau1[1]-x1^rho1)/s1)),
+                    -log(pnorm((tau1[1]-x2^rho1)/s1)),
+                    -log(pnorm((tau1[2]-x1^rho1)/s1) - pnorm((tau1[1]-x1^rho1)/s1)),
+                    -log(pnorm((tau1[2]-x2^rho1)/s1) - pnorm((tau1[1]-x2^rho1)/s1)),
+                    -log(1-pnorm((tau1[2]-x1^rho1)/s1)),
+                    -log(1-pnorm((tau1[2]-x2^rho1)/s1))
+                   )
+
+etaVect <- c()
+xcalc <- c(x1,x2,x1,x2,x1,x2)
+mcalc <- c(0,0,1,1,2,2)
+for(n in 1:length(xcalc)) {
+  expect_error(
+    cgiInputs <- calc_cond_gauss_int_inputs(th_y,xcalc[n],mcalc[n],mapping),
+    NA
+  )
+
+  expect_equal(
+    names(cgiInputs),
+    c("meanVect","covMat","lo","hi","y_giv")
+  )
+
+  if(xcalc[n] == x1) {
+    expect_equal(
+      cgiInputs$meanVect,
+      x1^rho1
+    )
+  } else {
+    expect_equal(
+      cgiInputs$meanVect,
+      x2^rho1
+    )
+  }
+
+  expect_equal(
+    cgiInputs$covMat,
+    as.matrix(s1^2)
+  )
+
+  if(mcalc[n] == 0) {
+    expect_equal(
+      cgiInputs$lo,
+      -Inf
+    )
+
+    expect_equal(
+      cgiInputs$hi,
+      tau1[1]
+    )
+  } else if(mcalc[n] == 1) {
+    expect_equal(
+      cgiInputs$lo,
+      tau1[1]
+    )
+
+    expect_equal(
+      cgiInputs$hi,
+      tau1[2]
+    )
+  } else {
+    expect_equal(
+      cgiInputs$lo,
+      tau1[2]
+    )
+
+    expect_equal(
+      cgiInputs$hi,
+      Inf
+    )
+  }
+
+  expect_equal(
+    cgiInputs$y_giv,
+    c()
+  )
+
+  expect_error(
+    calcData <- prep_for_neg_log_lik_multivariate(xcalc[n],matrix(mcalc[n]),modSpec),
+    NA
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+}
+
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(xcalc,t(matrix(mcalc)),modSpec),
+  NA
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,0,mapping),
-  -log(pnorm((tau1[1]-x2^rho1)/s1))
-)
-
-
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,1,mapping),
-  -log(pnorm((tau1[2]-x1^rho1)/s1) - pnorm((tau1[1]-x1^rho1)/s1))
+  calc_neg_log_lik_vect_multivariate(th_y,calcData),
+  etaVect_direct
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,1,mapping),
-  -log(pnorm((tau1[2]-x2^rho1)/s1) - pnorm((tau1[1]-x2^rho1)/s1))
+  calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,2,mapping),
-  -log(1-pnorm((tau1[2]-x1^rho1)/s1))
+  calc_neg_log_lik_multivariate(th_y,calcData),
+  sum(etaVect_direct)
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,2,mapping),
-  -log(1-pnorm((tau1[2]-x2^rho1)/s1))
+  calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+  sum(etaVect_direct)
 )
-
 
 # Test a model with one continuous variable
 modSpec <- list(meanSpec='powLaw')
 modSpec$noiseSpec  <- 'const'
 modSpec$J <- 0
 modSpec$K <- 1
-modSpec$cdepSpec <- 'indep'
+modSpec$cdepSpec <- 'indep' # necessary for prep_for_neg_log_lik_multivariate
 
 th_y <- c(r1,a1,b1,s3)
 
@@ -1829,16 +1941,100 @@ expect_error(
   NA
 )
 
+expect_error(
+  tfCatVect <- get_multivariate_transform_categories(mapping$modSpec),
+  NA
+)
+
+expect_error(
+  th_y_bar <- param_constr2unconstr(th_y,tfCatVect),
+  NA
+)
+
 w1 <- 1.2
 w2 <- 1.4
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,w1,mapping),
-  -dnorm(w1,a1*x1^r1+b1,s3,log=T)
+etaVect_direct <- c(
+                    -dnorm(w1,a1*x1^r1+b1,s3,log=T),
+                    -dnorm(w2,a1*x2^r1+b1,s3,log=T)
+                   )
+
+xcalc <- c(x1,x2)
+wcalc <- c(w1,w2)
+for(n in 1:length(xcalc)) {
+  expect_error(
+    cgiInputs <- calc_cond_gauss_int_inputs(th_y,xcalc[n],wcalc[n],mapping),
+    NA
+  )
+
+  expect_equal(
+    names(cgiInputs),
+    c("meanVect","covMat","lo","hi","y_giv")
+  )
+
+  expect_equal(
+    cgiInputs$meanVect,
+    a1*xcalc[n]^r1 + b1
+  )
+
+  expect_equal(
+    cgiInputs$covMat,
+    as.matrix(s3^2)
+  )
+
+  expect_equal(
+    cgiInputs$y_giv,
+    wcalc[n]
+  )
+
+  expect_error(
+    calcData <- prep_for_neg_log_lik_multivariate(xcalc[n],matrix(wcalc[n]),modSpec),
+    NA
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+}
+
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(xcalc,t(matrix(wcalc)),modSpec),
+  NA
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,w2,mapping),
-  -dnorm(w2,a1*x2^r1+b1,s3,log=T)
+  calc_neg_log_lik_vect_multivariate(th_y,calcData),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_multivariate(th_y,calcData),
+  sum(etaVect_direct)
+)
+
+expect_equal(
+  calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+  sum(etaVect_direct)
 )
 
 # Test a model with one ordinal and one continuous variable
@@ -1852,11 +2048,6 @@ modSpec$cdepGroups <- c(1,2)
 
 th_y <- c(rho1,r1,a1,b1,tau1,s1,s3,z[2])
 
-expect_error(
-  mapping <- get_var_index_multivariate_mapping(modSpec),
-  NA
-)
-
 w1 <- 1.2
 w2 <- 1.4
 
@@ -1864,34 +2055,108 @@ mu_bar1 <- x1^rho1 + z[2]*s1/s3*(w1-a1*x1^r1-b1)
 s1_bar <- s1*sqrt(1-z[2]^2)
 mu_bar2 <- x2^rho1 + z[2]*s1/s3*(w2-a1*x2^r1-b1)
 
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,matrix(c(0,w1)),mapping),
-  -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(pnorm((tau1[1]-mu_bar1)/s1_bar))
+expect_error(
+  mapping <- get_var_index_multivariate_mapping(modSpec),
+  NA
+)
+
+expect_error(
+  tfCatVect <- get_multivariate_transform_categories(mapping$modSpec),
+  NA
+)
+
+expect_error(
+  th_y_bar <- param_constr2unconstr(th_y,tfCatVect),
+  NA
+)
+
+etaVect_direct <- c(
+                    -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(pnorm((tau1[1]-mu_bar1)/s1_bar)),
+                    -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(pnorm((tau1[2]-mu_bar1)/s1_bar) - pnorm((tau1[1]-mu_bar1)/s1_bar)),
+                    -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(1 - pnorm((tau1[2]-mu_bar1)/s1_bar)),
+                    -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(pnorm((tau1[1]-mu_bar2)/s1_bar)),
+                    -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(pnorm((tau1[2]-mu_bar2)/s1_bar) - pnorm((tau1[1]-mu_bar2)/s1_bar)),
+                    -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(1 - pnorm((tau1[2]-mu_bar2)/s1_bar))
+                   )
+
+xcalc <- c(x1,x1,x1,x2,x2,x2)
+Ycalc <- t(matrix(c(0,1,2,0,1,2,w1,w1,w1,w2,w2,w2),nrow=6))
+
+for(n in 1:length(xcalc)) {
+  expect_error(
+    cgiInputs <- calc_cond_gauss_int_inputs(th_y,xcalc[n],Ycalc[,n],mapping),
+    NA
+  )
+
+  expect_equal(
+    names(cgiInputs),
+    c("meanVect","covMat","lo","hi","y_giv")
+  )
+
+  expect_equal(
+    cgiInputs$meanVect,
+    c(xcalc[n]^rho1,a1*xcalc[n]^r1 + b1)
+  )
+
+  expect_equal(
+    cgiInputs$covMat,
+    matrix(c(s1^2,s1*s3*z[2],s1*s3*z[2],s3^2),nrow=2)
+  )
+
+  expect_equal(
+    cgiInputs$y_giv,
+    Ycalc[2,n]
+  )
+
+  expect_error(
+    calcData <- prep_for_neg_log_lik_multivariate(xcalc[n],matrix(Ycalc[,n]),modSpec),
+    NA
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+}
+
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(xcalc,Ycalc,modSpec),
+  NA
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,matrix(c(1,w1)),mapping),
-  -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(pnorm((tau1[2]-mu_bar1)/s1_bar) - pnorm((tau1[1]-mu_bar1)/s1_bar))
+  calc_neg_log_lik_vect_multivariate(th_y,calcData),
+  etaVect_direct
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,matrix(c(2,w1)),mapping),
-  -dnorm(w1,a1*x1^r1+b1,s3,log=T) - log(1 - pnorm((tau1[2]-mu_bar1)/s1_bar))
+  calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,matrix(c(0,w2)),mapping),
-  -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(pnorm((tau1[1]-mu_bar2)/s1_bar))
+  calc_neg_log_lik_multivariate(th_y,calcData),
+  sum(etaVect_direct)
 )
 
 expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,matrix(c(1,w2)),mapping),
-  -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(pnorm((tau1[2]-mu_bar2)/s1_bar) - pnorm((tau1[1]-mu_bar2)/s1_bar))
-)
-
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,matrix(c(2,w2)),mapping),
-  -dnorm(w2,a1*x2^r1+b1,s3,log=T) - log(1 - pnorm((tau1[2]-mu_bar2)/s1_bar))
+  calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+  sum(etaVect_direct)
 )
 
 # Test a model with two ordinal and two continuous variable
@@ -1905,61 +2170,124 @@ modSpec$cdepGroups <- c(1,2,3,4)
 
 th_y <- c(rho1,rho2,r1,a1,b1,r2,a2,b2,tau1,tau2,s1,s2,s3,s4,z)
 
-expect_error(
-  mapping <- get_var_index_multivariate_mapping(modSpec),
-  NA
-)
-
-Y <- matrix(c(0,1,100,50,1,2,160,92),nrow=4)
+Ycalc <- matrix(c(0,1,100,50,1,2,160,92),nrow=4)
 # Directly Calculate likelihood for both observations
 g1 <- x1^c(rho1,rho2)
 g2 <- x2^c(rho1,rho2)
 h1 <- c(a1,a2)*x1^c(r1,r2) + c(b1,b2)
 h2 <- c(a1,a2)*x2^c(r1,r2) + c(b1,b2)
 
-S1 <- calc_Sigma_fast(th_y,x1,mapping)
-S2 <- calc_Sigma_fast(th_y,x2,mapping)
+expect_error(
+  mapping <- get_var_index_multivariate_mapping(modSpec),
+  NA
+)
+
+expect_error(
+  tfCatVect <- get_multivariate_transform_categories(mapping$modSpec),
+  NA
+)
+
+expect_error(
+  th_y_bar <- param_constr2unconstr(th_y,tfCatVect),
+  NA
+)
+noiseVect <- c(s1,s2,s3,s4)
+zMat <- get_z_full_fast(th_y,mapping,T)
+covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
+covMat <- covMat * zMat
+
+S1 <- covMat
+S2 <- covMat
 
 condMean1 <- g1 + S1[1:2,3:4] %*% solve(S1[3:4,3:4]) %*% as.matrix(c(100,50) - h1)
 condCov1 <- S1[1:2,1:2] - S1[1:2,3:4] %*% solve(S1[3:4,3:4]) %*% S1[3:4,1:2]
 logLik1 <- mvtnorm::dmvnorm(c(100,50),h1,S1[3:4,3:4],log=T)
 condIntegral1 <- mvtnorm::pmvnorm(lower=c(-Inf,tau2[1]),upper=c(tau1[1],tau2[2]),mean=as.vector(condMean1),sigma=condCov1)
 logLik1 <- logLik1 + log(as.numeric(condIntegral1))
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x1,Y[,1],mapping),
-  -logLik1
-)
 
 condMean2 <- g2 + S2[1:2,3:4] %*% solve(S2[3:4,3:4]) %*% as.matrix(c(160,92) - h2)
 condCov2 <- S2[1:2,1:2] - S2[1:2,3:4] %*% solve(S2[3:4,3:4]) %*% S2[3:4,1:2]
 logLik2 <- mvtnorm::dmvnorm(c(160,92),h2,S2[3:4,3:4],log=T)
 condIntegral2 <- mvtnorm::pmvnorm(lower=c(tau1[1],tau2[2]),upper=c(tau1[2],Inf),mean=as.vector(condMean2),sigma=condCov2)
 logLik2 <- logLik2 + log(as.numeric(condIntegral2))
-expect_equal(
-  calc_neg_log_lik_multivariate_core(th_y,x2,Y[,2],mapping),
-  -logLik2
-)
 
-modSpecList <- list()
-modSpecList[[1]] <- modSpec
-modSpecList[[2]] <- modSpec
-mappingList <- list()
-mappingList[[1]] <- mapping
-mappingList[[2]] <- mapping
+etaVect_direct <- c(-logLik1,-logLik2)
 
-#expect_equal(
-#  calc_neg_log_lik_vect_multivariate_core(th_y,c(x1,x2),Y,modSpecList,mappingList),
-#  -c(lik1,lik2)
-#)
+xcalc <- c(x1,x2)
+for(n in 1:length(xcalc)) {
+  expect_error(
+    cgiInputs <- calc_cond_gauss_int_inputs(th_y,xcalc[n],Ycalc[,n],mapping),
+    NA
+  )
+
+  expect_equal(
+    names(cgiInputs),
+    c("meanVect","covMat","lo","hi","y_giv")
+  )
+
+  expect_equal(
+    cgiInputs$meanVect,
+    c(xcalc[n]^rho1,xcalc[n]^rho2,a1*xcalc[n]^r1 + b1,a2*xcalc[n]^r2+b2)
+  )
+
+  expect_equal(
+    cgiInputs$covMat,
+    covMat
+  )
+
+  expect_equal(
+    cgiInputs$y_giv,
+    Ycalc[3:4,n]
+  )
+
+  expect_error(
+    calcData <- prep_for_neg_log_lik_multivariate(xcalc[n],matrix(Ycalc[,n]),modSpec),
+    NA
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y,calcData),
+    etaVect_direct[n]
+  )
+
+  expect_equal(
+    calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+    etaVect_direct[n]
+  )
 }
 
-# TODO:
-#renumber_groups
-#get_non_singleton_groups
-#calc_cond_gauss_int_inputs
-#calc_neg_log_lik_scalar_multivariate
-#calc_neg_log_lik_vect_multivariate_chunk_outer
-#calc_neg_log_lik_vect_multivariate_chunk_inner
-#calc_neg_log_like_vect_multivariate
-#calc_neg_log_like_multivariate
-#calc_cond_gauss_int_inputs
+expect_error(
+  calcData <- prep_for_neg_log_lik_multivariate(xcalc,Ycalc,modSpec),
+  NA
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate(th_y,calcData),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_multivariate(th_y,calcData),
+  sum(etaVect_direct)
+)
+
+expect_equal(
+  calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
+  sum(etaVect_direct)
+)
+
