@@ -234,7 +234,6 @@ get_num_var_multivariate <- function(varName,modSpec,j=NA,k=NA,i=NA,preceding=F)
 #' 0   1   0   0   0    k specified
 #' 0   0   1   0   0    i specified
 #' 0   0   0   1   1    i1 and i2 specified
-
 #'
 #' @param varName The variable name (a, tau, alpha, z)
 #' @param modSpec The model specification
@@ -581,16 +580,6 @@ get_univariate_indices <- function(modSpec,j=NA,k=NA,i=NA) {
   return(ind)
 }
 
-
-#calc_neg_log_lik_vect_multivariate_core <- function(th_y,x,Y,modSpecList,mappingList) {
-#  '%dopar%' <- foreach::'%dopar%'
-#  negLogLikVect <- foreach::foreach(n=1:ncol(Y), .combine=cbind) %dopar% {
-#    negLogLik <- calc_neg_log_lik_multivariate_core(th_y,x[n],Y[,n],modSpecList[[n]],mappingList[[n]])
-#  }
-#
-#  return(as.vector(negLogLikVect))
-#}
-
 #' For a single observation with response vector y0 and model specification
 #' modSpec0, modify modSpec0 to account for missing observations in y0, which
 #' are indicated with NA. In addition, create additional variables to support
@@ -720,6 +709,7 @@ remove_missing_variables <- function(y0,modSpec0) {
 #' @param x The independent variable
 #' @param Y The matrix of responses
 #' @param modSpec The model specification
+#' @return Data needed for a speedy negative log-likelihood calculation (calcData)
 #' @export
 prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
   N <- length(x)
@@ -763,29 +753,23 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
 
   # Call remove_missing_variables to populate the following lists:
   calcData <- list()
-#  y_list <- list()
-#  modSpecList  <- list()
-#  mappingList  <- list()
-#  mapping0List <- list()
-#  indList      <- list()
-#  keepList     <- list()
   for(n in 1:N) {
     # Remove missing variables
     remap <- remove_missing_variables(Y[,n],modSpec)
-#    y_list[[n]] <- remap$y
-#    modSpecList[[n]]  <- remap$modSpec
-#    mappingList[[n]]  <- remap$mapping
-#    mapping0List[[n]] <- remap$mapping0
-#    indList[[n]]      <- remap$ind
-#    keepList[[n]]     <- remap$keep
     calcData_n <- list(x=x[n],y=remap$y,modSpec=remap$modSpec,mapping=remap$mapping,mapping0=remap$mapping0,ind=remap$ind,keep=remap$keep)
     calcData[[n]] <- calcData_n
   }
 
   return(calcData)
-#  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
 }
 
+#' Extract the full correlation vector of length choose(J+K,2), accounting for
+#' for the grouping structure specified by modSpec$cdepGroups.
+#'
+#' @param th_y The parameter vector
+#' @param mapping The mapping object that supports quick indexing
+#' @param asMatrix Whether or not to return a (J+K) by (J+K) matrix of correlations (default FALSE)
+#' @return The full correlation vector (or matrix)
 #' @export
 get_z_full_fast <- function(th_y,mapping,asMatrix=F) {
 
@@ -810,6 +794,12 @@ get_z_full_fast <- function(th_y,mapping,asMatrix=F) {
   return(zMat)
 }
 
+#' Use a parallel for loop to calculate the vector of negative log-likelihoods.
+#'
+#' @param th_y The parameter vector
+#' @param calcData Data needed for a speedy negative log-likelihood calculation
+#' @param tfCatVect A vector to transform th_y from an unconstrained to a constrained representation (if necessary)
+#' @return The vector of negative log-likelihoods
 #' @export
 calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   if(!all(is.na(tfCatVect))) {
@@ -824,6 +814,11 @@ calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   return(as.vector(negLogLikVect))
 }
 
+#' Calculate the negative log-likelihood for a single observation
+#'
+#' @param th_y The parameter vector
+#' @param calcData_n Data needed for a speedy negative log-likelihood calculation (for a single observation, n)
+#' @return The negative log-likelihood for the observation
 #' @export
 calc_neg_log_lik_scalar_multivariate <- function(th_y,calcData_n) {
   prepData_n <- calc_cond_gauss_int_inputs(th_y[calcData_n$ind],calcData_n$x,calcData_n$y,calcData_n$mapping)
@@ -831,6 +826,18 @@ calc_neg_log_lik_scalar_multivariate <- function(th_y,calcData_n) {
   return(negLogLik_n)
 }
 
+#' Use a parallel for loop along with "chunks" of input data to calculate the
+#' vector of negative log-likelihoods. For each chunk, a conventional for loop
+#' is used for each negative log-likelihood calculation and a parallel for loop
+#' is used to iterate across chunks. The output is identical to
+#' calc_neg_log_lik_vect_multivariate, but chunking the data can lead to better
+#' performance on some systems.
+#'
+#' @param th_y The parameter vector
+#' @param calcData Data needed for a speedy negative log-likelihood calculation
+#' @param tfCatVect A vector to transform th_y from an unconstrained to a constrained representation (if necessary)
+#' @param nunChunks The number of chunks to use (default: round(length(calcData)/10))
+#' @return The vector of negative log-likelihoods
 #' @export
 calc_neg_log_lik_vect_multivariate_chunk_outer <- function(th_y,calcData,tfCatVect=NA,numChunks=round(length(calcData)/10)) {
   if(!all(is.na(tfCatVect))) {
@@ -856,6 +863,13 @@ calc_neg_log_lik_vect_multivariate_chunk_outer <- function(th_y,calcData,tfCatVe
   return(negLogLikVect_out)
 }
 
+#' A helper function called by calc_neg_log_lik_vect_multivariate_chunk_outer
+#' that calculates the negative log-likelihood for a set of observations using
+#' a conventional for loop.
+#'
+#' @param th_y The parameter vector
+#' @param calcData Data needed for a speedy negative log-likelihood calculation
+#' @return The vector of negative log-likelihoods
 #' @export
 calc_neg_log_lik_vect_multivariate_chunk_inner <- function(th_y,calcData) {
 
@@ -868,6 +882,13 @@ calc_neg_log_lik_vect_multivariate_chunk_inner <- function(th_y,calcData) {
   return(negLogLikVect)
 }
 
+#' Calculate the overall negative log-likelihood for a set of observations by
+#' calling calc_neg_log_lik_vect_multivariate and summing the resulting vector.
+#'
+#' @param th_y The parameter vector
+#' @param calcData Data needed for a speedy negative log-likelihood calculation
+#' @param tfCatVect A vector to transform th_y from an unconstrained to a constrained representation (if necessary)
+#' @return The overall negative log-likelihood
 #' @export
 calc_neg_log_lik_multivariate <- function(th_y,calcData,tfCatVect=NA) {
   negLogLikVect <- calc_neg_log_lik_vect_multivariate(th_y,calcData,tfCatVect)

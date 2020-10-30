@@ -14,6 +14,9 @@ prep_for_neg_log_lik_multivariate(x, Y, modSpec)
 
 \item{modSpec}{The model specification}
 }
+\value{
+Data needed for a speedy negative log-likelihood calculation (calcData)
+}
 \description{
 Prepare for the negative log-likelihood calculations by creating indexing
 objects to speed up execution.
