@@ -1747,6 +1747,9 @@ expect_equal(
 # calc_cond_gauss_int_inputs
 # calc_neg_log_lik_vect_multivariate
 # calc_neg_log_lik_multivariate
+# calc_neg_log_lik_vect_multivariate_chunk_outer
+# calc_neg_log_lik_vect_multivariate_chunk_inner [tested indirectly]
+# calc_neg_log_lik_scalar_multivariate [tested indirectly]
 
 rho1 <- .65
 rho2 <- .75
@@ -1883,10 +1886,6 @@ for(n in 1:length(xcalc)) {
     etaVect_direct[n]
   )
 
-  expect_equal(
-    calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
-    etaVect_direct[n]
-  )
 
   expect_equal(
     calc_neg_log_lik_multivariate(th_y,calcData),
@@ -1911,6 +1910,16 @@ expect_equal(
 
 expect_equal(
   calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect),
   etaVect_direct
 )
 
@@ -2021,6 +2030,16 @@ expect_equal(
 
 expect_equal(
   calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData,numChunks=2),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect,numChunks=2),
   etaVect_direct
 )
 
@@ -2143,6 +2162,16 @@ expect_equal(
 
 expect_equal(
   calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect),
   etaVect_direct
 )
 
@@ -2275,6 +2304,16 @@ expect_equal(
 
 expect_equal(
   calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData,numChunks=2),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect,numChunks=2),
   etaVect_direct
 )
 
@@ -2452,6 +2491,16 @@ expect_equal(
 )
 
 expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData,numChunks=2),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect,numChunks=2),
+  etaVect_direct
+)
+
+expect_equal(
   calc_neg_log_lik_multivariate(th_y,calcData),
   sum(etaVect_direct)
 )
@@ -2621,6 +2670,16 @@ expect_equal(
 
 expect_equal(
   calc_neg_log_lik_vect_multivariate(th_y_bar,calcData,tfCatVect),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y,calcData,numChunks=2),
+  etaVect_direct
+)
+
+expect_equal(
+  calc_neg_log_lik_vect_multivariate_chunk_outer(th_y_bar,calcData,tfCatVect,numChunks=2),
   etaVect_direct
 )
 
