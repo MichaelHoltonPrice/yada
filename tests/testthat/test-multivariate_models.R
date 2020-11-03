@@ -1,3 +1,4 @@
+# TODO: Add test of cdepGroups when there is exactly one group
 library(doParallel)
 registerDoParallel(detectCores()-2)
 # Test yada::get_J

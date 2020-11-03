@@ -678,25 +678,27 @@ remove_missing_variables <- function(y0,modSpec0) {
   }
 
   if(modSpec$cdepSpec == 'dep') {
-  # Add non-singleton groups
-  nonSingGroups0 <- get_non_singleton_groups(groups0)
-  nonSingGroups  <- get_non_singleton_groups(groups)
-  numBefore <- get_num_var_multivariate('z',modSpec0,preceding=T)
-  if(length(nonSingGroups) > 0) {
-    for(g in nonSingGroups) {
-      g0 <- new2old_group[g]
-      ind <- c(ind,numBefore + which(g0 == nonSingGroups0))
+    # Add non-singleton groups
+    nonSingGroups0 <- get_non_singleton_groups(groups0)
+    nonSingGroups  <- get_non_singleton_groups(groups)
+    numBefore <- get_num_var_multivariate('z',modSpec0,preceding=T)
+    if(length(nonSingGroups) > 0) {
+      for(g in nonSingGroups) {
+        g0 <- new2old_group[g]
+        ind <- c(ind,numBefore + which(g0 == nonSingGroups0))
+      }
     }
-  }
 
-  # Add cross-group correlations
-  for(g1 in 1:(Ng-1)) {
-    for(g2 in (g1+1):Ng) {
-      g1_0 <- new2old_group[g1]
-      g2_0 <- new2old_group[g2]
-      ind <- c(ind,numBefore + length(nonSingGroups0) + elemToIndex(c(g1_0,g2_0)-1,Ng0) + 1)
+    # Add cross-group correlations
+    if(Ng > 0) {
+      for(g1 in 1:(Ng-1)) {
+        for(g2 in (g1+1):Ng) {
+          g1_0 <- new2old_group[g1]
+          g2_0 <- new2old_group[g2]
+          ind <- c(ind,numBefore + length(nonSingGroups0) + elemToIndex(c(g1_0,g2_0)-1,Ng0) + 1)
+        }
+      }
     }
-  }
   }
   ind <- sort(ind)
 
