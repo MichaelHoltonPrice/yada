@@ -690,7 +690,7 @@ remove_missing_variables <- function(y0,modSpec0) {
     }
 
     # Add cross-group correlations
-    if(Ng > 0) {
+    if(Ng > 1) {
       for(g1 in 1:(Ng-1)) {
         for(g2 in (g1+1):Ng) {
           g1_0 <- new2old_group[g1]
