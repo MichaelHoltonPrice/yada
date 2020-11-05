@@ -788,10 +788,9 @@ get_z_full_fast <- function(th_y,mapping,asMatrix=F) {
   }
 
   zMat <- diag(J+K)
-  zMat[upper.tri(zMat)] <- z_full
+  zMat[lower.tri(zMat)] <- z_full
   zMat <- t(zMat)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
+  zMat[lower.tri(zMat)] <- z_full
 
   return(zMat)
 }
@@ -1072,10 +1071,10 @@ calc_cond_gauss_int_inputs <- function(th_y,x,y,mapping) {
   z_full[B] <- th_y[ind_z]
 
   zMat <- diag(J+K)
-  zMat[upper.tri(zMat)] <- z_full
+  zMat[lower.tri(zMat)] <- z_full
   zMat <- t(zMat)
-  zMat[upper.tri(zMat)] <- z_full
-  zMat <- t(zMat)
+  zMat[lower.tri(zMat)] <- z_full
+
   covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
   covMat <- covMat * zMat
   return(list(meanVect=meanVect,covMat=covMat,lo=lo,hi=hi,y_giv=y_giv))

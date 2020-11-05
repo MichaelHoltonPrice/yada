@@ -1721,6 +1721,120 @@ expect_equal(
   zMat_direct
 )
 
+# Test get_z_full_fast with another four variable model
+modSpec <- list(meanSpec=c('logOrd','powLawOrd','powLaw','powLaw'))
+modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const')
+modSpec$J <- 2
+modSpec$M <- c(2,3)
+modSpec$K <- 2
+modSpec$cdepSpec <- 'dep' # conditionally dependent
+modSpec$cdepGroups <- c(1,1,2,2)
+
+expect_error(
+  mapping <- get_var_index_multivariate_mapping(modSpec),
+  NA
+)
+
+zns      <- c(-.1,.2)
+zcr      <- c(.05)
+z        <- c(zns,zcr)
+th_y <- c( 
+  c(0.75),         # a2
+  c(0.3,0.1,-.25), # a3
+  c(0.8,1.2, .25), # a4
+  c(-2.0,2.5),     # tau1
+  c(-1.0,3.5,4.5), # tau2
+  c(.2),           # alpha1
+  c(.4,.03),       # alpha2
+  c(.3,.02),       # alpha3
+  c(.5),           # alpha4
+  z                # z
+)
+
+# Test get_z_full
+z_full_direct <- c(zns[1],zcr,zcr,zcr,zcr,zns[2])
+
+expect_equal(
+  get_z_full_fast(th_y,mapping),
+  z_full_direct
+)
+
+zMat_direct <- diag(modSpec$J+modSpec$K)
+zMat_direct[1,2] <- zns[1]
+zMat_direct[1,3] <- zcr
+zMat_direct[1,4] <- zcr
+zMat_direct[2,3] <- zcr
+zMat_direct[2,4] <- zcr
+zMat_direct[3,4] <- zns[2]
+zMat_direct[2,1] <- zMat_direct[1,2]
+zMat_direct[3,1] <- zMat_direct[1,3]
+zMat_direct[4,1] <- zMat_direct[1,4]
+zMat_direct[3,2] <- zMat_direct[2,3]
+zMat_direct[4,2] <- zMat_direct[2,4]
+zMat_direct[4,3] <- zMat_direct[3,4]
+
+expect_equal(
+  get_z_full_fast(th_y,mapping,asMatrix=T),
+  zMat_direct
+)
+
+# Test get_z_full_fast with yet another four variable model
+modSpec <- list(meanSpec=c('logOrd','powLawOrd','powLaw','powLaw'))
+modSpec$noiseSpec <- c('const','lin_pos_int','lin_pos_int','const')
+modSpec$J <- 2
+modSpec$M <- c(2,3)
+modSpec$K <- 2
+modSpec$cdepSpec <- 'dep' # conditionally dependent
+modSpec$cdepGroups <- c(1,2,3,4)
+
+expect_error(
+  mapping <- get_var_index_multivariate_mapping(modSpec),
+  NA
+)
+
+zns      <- c()
+zcr      <- c(.1,.2,.3,.4,.5,.6)
+z        <- c(zns,zcr)
+th_y <- c( 
+  c(0.75),         # a2
+  c(0.3,0.1,-.25), # a3
+  c(0.8,1.2, .25), # a4
+  c(-2.0,2.5),     # tau1
+  c(-1.0,3.5,4.5), # tau2
+  c(.2),           # alpha1
+  c(.4,.03),       # alpha2
+  c(.3,.02),       # alpha3
+  c(.5),           # alpha4
+  z                # z
+)
+
+# Test get_z_full
+z_full_direct <- z
+
+expect_equal(
+  get_z_full_fast(th_y,mapping),
+  z_full_direct
+)
+
+zMat_direct <- diag(modSpec$J+modSpec$K)
+zMat_direct[1,2] <- z[1]
+zMat_direct[1,3] <- z[2]
+zMat_direct[1,4] <- z[3]
+zMat_direct[2,3] <- z[4]
+zMat_direct[2,4] <- z[5]
+zMat_direct[3,4] <- z[6]
+zMat_direct[2,1] <- zMat_direct[1,2]
+zMat_direct[3,1] <- zMat_direct[1,3]
+zMat_direct[4,1] <- zMat_direct[1,4]
+zMat_direct[3,2] <- zMat_direct[2,3]
+zMat_direct[4,2] <- zMat_direct[2,4]
+zMat_direct[4,3] <- zMat_direct[3,4]
+
+expect_equal(
+  get_z_full_fast(th_y,mapping,asMatrix=T),
+  zMat_direct
+)
+
 # Test renumber_groups
 expect_equal(
   renumber_groups(1:10),
@@ -2362,10 +2476,9 @@ expect_equal(
 )
 
 zMat_direct <- diag(4)
-zMat_direct[upper.tri(zMat_direct)] <- z_full_direct
+zMat_direct[lower.tri(zMat_direct)] <- z_full_direct
 zMat_direct <- t(zMat_direct)
-zMat_direct[upper.tri(zMat_direct)] <- z_full_direct
-zMat_direct <- t(zMat_direct)
+zMat_direct[lower.tri(zMat_direct)] <- z_full_direct
 expect_error(
   zMat <- get_z_full_fast(th_y,mapping,asMatrix=T),
   NA
@@ -2545,10 +2658,9 @@ expect_equal(
 )
 
 zMat_direct <- diag(4)
-zMat_direct[upper.tri(zMat_direct)] <- z_full_direct
+zMat_direct[lower.tri(zMat_direct)] <- z_full_direct
 zMat_direct <- t(zMat_direct)
-zMat_direct[upper.tri(zMat_direct)] <- z_full_direct
-zMat_direct <- t(zMat_direct)
+zMat_direct[lower.tri(zMat_direct)] <- z_full_direct
 expect_error(
   zMat <- get_z_full_fast(th_y,mapping,asMatrix=T),
   NA
