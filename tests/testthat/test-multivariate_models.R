@@ -1924,6 +1924,48 @@ expect_equal(
   sum(etaVect_direct)
 )
 
+# Test calc_x_density here (and indirectly test calcPdfMatrixWeibMix and
+# calcPdfWeibMix).
+# The x-vector to use for the calculations relevant to the posterior density:
+xpost <- seq(0,23,by=.1)
+
+# Test when th_x is exponential
+th_x_exp <- list(fitType='exponential',fit=2)
+
+expect_equal(
+  calc_x_density(xpost,th_x_exp),
+  dexp(xpost,2)
+)
+
+# Test when th_x is an offset Weibull mixture
+th_x_weib <- list(fitType='offsetWeibMix',fit=list(lambda=c(.28,.22,.50),scale=c(2.1,3.6,18.4),shape=c(.63,.78,8.56)),weibOffset=0.002)
+
+f_weib_direct <- rep(NA,length(xpost))
+for(n in 1:length(xpost)) {
+  f_weib_direct[n] <- dweibull(xpost[n]+.002,shape=.63,scale=2.1)*.28 + dweibull(xpost[n]+.002,shape=.78,scale=3.6)*.22 + dweibull(xpost[n]+.002,shape=8.56,scale=18.4)*.50
+}
+
+# Test when th_x is uniform
+expect_equal(
+  calc_x_density(xpost,th_x_weib),
+  f_weib_direct
+)
+
+th_x_unif <- list(fitType='uniform',xmin=2,xmax=13.5)
+
+f_unif_direct <- rep(0,length(xpost))
+for(n in 1:length(xpost)) {
+  if( (2 <= xpost[n]) && (xpost[n] <= 13.5) ) {
+    f_unif_direct[n] <- 1/(13.5-2)
+  }
+}
+
+expect_equal(
+  calc_x_density(xpost,th_x_unif),
+  f_unif_direct
+)
+
+
 # Test a model with one continuous variable
 modSpec <- list(meanSpec='powLaw')
 modSpec$noiseSpec  <- 'const'
