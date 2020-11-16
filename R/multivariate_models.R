@@ -744,7 +744,7 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
       xj <- xj[indj]
       yj <- yj[indj]
       if(any((xj == 0) & (yj > 0))) {
-        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m=0'))
+        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m>0'))
       }
       matches <- which((xj == 0) & (yj == 0))
       if(length(matches) > 0) {
@@ -1078,4 +1078,109 @@ calc_cond_gauss_int_inputs <- function(th_y,x,y,mapping) {
   covMat <- as.matrix(noiseVect) %*% base::t(as.matrix(noiseVect))
   covMat <- covMat * zMat
   return(list(meanVect=meanVect,covMat=covMat,lo=lo,hi=hi,y_giv=y_giv))
+}
+
+#' Calculate the posterior probability p(x|y,theta_x,theta_y) for the mixed
+#' cumulative probit model at the points in xcalc given the response vector
+#' y. xcalc is assumed to be evenly spaced and the calculation is for a single
+#' observation.
+#'
+#' @param xcalc A vector of ages at which to calculate the posterior probability
+#' @param y The response vector for a single observation
+#' @param th_x Parameterization for prior on x
+#' @param th_y Parameterization for likelihood
+#' @param modSpec The model specification
+#' @return A vector of posterior probabilities
+#' @export
+calc_x_posterior <- function(xcalc,y,th_x,th_y,modSpec) {
+  # Assume xcalc is evenly spaced
+  dx <- xcalc[2] - xcalc[1] 
+  if(!all.equal(diff(xcalc),rep(dx,length(xcalc)-1))) {
+    stop('xcalc must be evenly spaced')
+  }
+  p_xy <- calc_joint(xcalc,y,th_x,th_y,modSpec)
+  p_x <- p_xy / sum(p_xy) / dx
+  return(p_x)
+}
+
+#' Calculate the joint density probability p(x,y|th_x,th_y) for the mixed
+#' cumulative probit model at the points in xcalc. xcalc is assumed to be evenly
+#' spaced.
+#'
+#' @param xcalc A vector of ages at which to calculate the posterior probability
+#' @param y The response vector for a single observation
+#' @param th_x Parameterization for prior on x
+#' @param th_y Parameterization for likelihood (conditional on x)
+#' @param modSpec The model specification
+#' @return A vector of joint probabilities
+#' @export
+calc_joint <- function(xcalc,y,th_x,th_y,modSpec) {
+  Y <- matrix(y,nrow=length(y),ncol=length(xcalc))
+  calcData <- prep_for_neg_log_lik_multivariate(xcalc,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData) # the vector of log-likelihoods
+
+  logPriorVect <- log(calc_x_density(xcalc,th_x))
+
+  logJointVect <- logLikVect + logPriorVect
+
+  fv <- exp(logJointVect)
+  fv[!is.finite(fv)] <- 0
+  return(fv)
+}
+
+#' Calculate the density at x given a parameterization for the density of
+#' theta_x. Currently, the exponential distribution, Weibull mixtures, and
+#' uniform distribution are supported.
+#'
+#' @param x A vector of ages at which to calculate the density
+#' @param th_x A list with the fit type and parameter vector
+#' @export
+calc_x_density <- function(x,th_x) {
+  if(tolower(th_x$fitType) == 'exponential') { 
+    return(dexp(x,th_x$fit))
+  } else if (tolower(th_x$fitType) == 'offsetweibmix') { 
+    return(calcPdfWeibMix(x+th_x$weibOffset,th_x$fit$lambda,c(rbind(th_x$fit$shape,th_x$fit$scale))))
+  } else if (tolower(th_x$fitType) == 'uniform') { 
+    f <- rep(1,length(x))
+    ind0 <- x < th_x$xmin | th_x$xmax < x
+    f[ind0] <- 0
+    return(f/(th_x$xmax-th_x$xmin))
+  } else {
+    stop(paste('Unsupported fit type:',th_x$fitType))
+  }
+}
+
+#' Given the input vector x and Weibull mixture parameters theta, calculate the
+#' probability density function (PDF) matrix, which has dimensions length(x) by
+#' numMix, where numMix = length(theta)/2. The mixture proportions are not
+#' accounted for in the calculation.
+#'
+#' @param x Locations at which to evaluate probability density function
+#' @param theta The value of shape and scale parameters with the ordering [sh1,sc1,sh2,sc2,...]
+#' @return The PDF matrix with dimensions length(x) by length(theta)/2
+#' @export
+calcPdfMatrixWeibMix <- function(x, theta) {
+  numObs <- length(x) # Number of observations
+  numMix <- length(theta) / 2 # Number of mixtures
+  # For x, the shape parameter, and scale parameter create a long vector of
+  # length numObs*numMix for vectorized input to dweibull
+  x_vect <- rep(x, numMix)
+  shape_vect <- as.vector(t(matrix(rep(theta[seq(1, length(theta), by = 2)], length(x)), nrow = numMix)))
+  scale_vect <- as.vector(t(matrix(rep(theta[seq(2, length(theta), by = 2)], length(x)), nrow = numMix)))
+  # Calculate the probability density and transform to a matrix with dimensions numObs x numMix
+  return(matrix(dweibull(x_vect, shape_vect, scale_vect), ncol = numMix))
+}
+
+#' Given the input vector x and Weibull mixture proportions and parameters z and
+#' theta, calculate the probability density function for the input vector x.
+#'
+#' @param x Locations at which to evaluate probability density function
+#' @param z Vector of mixture proportions
+#' @param theta The value of shape and scale parameters with the ordering [sh1,sc1,sh2,sc2,...]
+#' @return The PDF vector for the input vector x
+#' @export
+calcPdfWeibMix <- function(x, z, theta) {
+  pdfMatrix <- calcPdfMatrixWeibMix(x, theta)
+  pdf <- rowSums(t(t(pdfMatrix) * z))
+  return(pdf)
 }
