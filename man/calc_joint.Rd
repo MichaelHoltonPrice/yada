@@ -2,7 +2,7 @@
 % Please edit documentation in R/multivariate_models.R
 \name{calc_joint}
 \alias{calc_joint}
-\title{Calculate the joint density probability p(x,y|theta_x,theta_y) for the mixed
+\title{Calculate the joint density probability p(x,y|th_x,th_y) for the mixed
 cumulative probit model at the points in xcalc. xcalc is assumed to be evenly
 spaced.}
 \usage{
@@ -15,7 +15,7 @@ calc_joint(xcalc, y, th_x, th_y, modSpec)
 
 \item{th_x}{Parameterization for prior on x}
 
-\item{th_y}{Parameterization for likelihood}
+\item{th_y}{Parameterization for likelihood (conditional on x)}
 
 \item{modSpec}{The model specification}
 }
@@ -23,7 +23,7 @@ calc_joint(xcalc, y, th_x, th_y, modSpec)
 A vector of joint probabilities
 }
 \description{
-Calculate the joint density probability p(x,y|theta_x,theta_y) for the mixed
+Calculate the joint density probability p(x,y|th_x,th_y) for the mixed
 cumulative probit model at the points in xcalc. xcalc is assumed to be evenly
 spaced.
 }

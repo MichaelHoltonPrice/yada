@@ -752,7 +752,7 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
       xj <- xj[indj]
       yj <- yj[indj]
       if(any((xj == 0) & (yj > 0))) {
-        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m=0'))
+        stop(paste0('For variable j=',j,', cases exist where meanSpec is logOrd, x=0, and m>0'))
       }
       matches <- which((xj == 0) & (yj == 0))
       if(length(matches) > 0) {
@@ -763,27 +763,14 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,modSpec) {
 
   # Call remove_missing_variables to populate the following lists:
   calcData <- list()
-#  y_list <- list()
-#  modSpecList  <- list()
-#  mappingList  <- list()
-#  mapping0List <- list()
-#  indList      <- list()
-#  keepList     <- list()
   for(n in 1:N) {
     # Remove missing variables
     remap <- remove_missing_variables(Y[,n],modSpec)
-#    y_list[[n]] <- remap$y
-#    modSpecList[[n]]  <- remap$modSpec
-#    mappingList[[n]]  <- remap$mapping
-#    mapping0List[[n]] <- remap$mapping0
-#    indList[[n]]      <- remap$ind
-#    keepList[[n]]     <- remap$keep
     calcData_n <- list(x=x[n],y=remap$y,modSpec=remap$modSpec,mapping=remap$mapping,mapping0=remap$mapping0,ind=remap$ind,keep=remap$keep)
     calcData[[n]] <- calcData_n
   }
 
   return(calcData)
-#  return(list(x=x,y_list=y_list,modSpecList=modSpecList,mappingList=mappingList,mapping0List=mapping0List,indList=indList,keepList=keepList))
 }
 
 #' @export
@@ -1067,20 +1054,24 @@ calc_cond_gauss_int_inputs <- function(th_y,x,y,mapping) {
 #' @return A vector of posterior probabilities
 #' @export
 calc_x_posterior <- function(xcalc,y,th_x,th_y,modSpec) {
-  dx <- xcalc[2] - xcalc[1] # Assumes xcalc is evenly spaced
+  # Assume xcalc is evenly spaced
+  dx <- xcalc[2] - xcalc[1] 
+  if(!all.equal(diff(xcalc),rep(dx,length(xcalc)-1))) {
+    stop('xcalc must be evenly spaced')
+  }
   p_xy <- calc_joint(xcalc,y,th_x,th_y,modSpec)
   p_x <- p_xy / sum(p_xy) / dx
   return(p_x)
 }
 
-#' Calculate the joint density probability p(x,y|theta_x,theta_y) for the mixed
+#' Calculate the joint density probability p(x,y|th_x,th_y) for the mixed
 #' cumulative probit model at the points in xcalc. xcalc is assumed to be evenly
 #' spaced.
 #'
 #' @param xcalc A vector of ages at which to calculate the posterior probability
 #' @param y The response vector for a single observation
 #' @param th_x Parameterization for prior on x
-#' @param th_y Parameterization for likelihood
+#' @param th_y Parameterization for likelihood (conditional on x)
 #' @param modSpec The model specification
 #' @return A vector of joint probabilities
 #' @export
@@ -1089,10 +1080,9 @@ calc_joint <- function(xcalc,y,th_x,th_y,modSpec) {
   calcData <- prep_for_neg_log_lik_multivariate(xcalc,Y,modSpec)
   logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData) # the vector of log-likelihoods
 
-  logPriorVect <- log(calc_x_density(xcalc,theta_x))
+  logPriorVect <- log(calc_x_density(xcalc,th_x))
 
-  # Since y is a single observation, use a parallel for loop
-  logJointVect <- logLik + logPrior 
+  logJointVect <- logLikVect + logPriorVect
 
   fv <- exp(logJointVect)
   fv[!is.finite(fv)] <- 0

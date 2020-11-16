@@ -1594,7 +1594,7 @@ x <- c(3,0)
 
 expect_error(
   calcData <- prep_for_neg_log_lik_multivariate(x,Y0,modSpec),
-  'For variable j=1, cases exist where meanSpec is logOrd, x=0, and m=0'
+  'For variable j=1, cases exist where meanSpec is logOrd, x=0, and m>0'
 )
 
 
@@ -1747,6 +1747,8 @@ expect_equal(
 # calc_cond_gauss_int_inputs
 # calc_neg_log_lik_vect_multivariate
 # calc_neg_log_lik_multivariate
+# calc_joint
+# calc_x_posterior
 
 rho1 <- .65
 rho2 <- .75
@@ -1925,16 +1927,19 @@ expect_equal(
 )
 
 # Test calc_x_density here (and indirectly test calcPdfMatrixWeibMix and
-# calcPdfWeibMix).
+# calcPdfWeibMix). [A bit of an interlude, but the next tests use functions
+# that rely on calc_x_density.]
 # The x-vector to use for the calculations relevant to the posterior density:
-xpost <- seq(0,23,by=.1)
+dx <- .1
+xpost <- seq(0,23,by=dx)
 
 # Test when th_x is exponential
 th_x_exp <- list(fitType='exponential',fit=2)
 
+f_exp_direct <- dexp(xpost,2)
 expect_equal(
   calc_x_density(xpost,th_x_exp),
-  dexp(xpost,2)
+  f_exp_direct
 )
 
 # Test when th_x is an offset Weibull mixture
@@ -1965,6 +1970,58 @@ expect_equal(
   f_unif_direct
 )
 
+# Test calc_joint and calc_x_posterior
+logPriorVect_exp  <- log(f_exp_direct)  # does not depend on m or th_y
+logPriorVect_weib <- log(f_weib_direct) # does not depend on m or th_y
+logPriorVect_unif <- log(f_unif_direct) # does not depend on m or th_y
+for(v in 0:modSpec$M) {
+  y <- v
+  Y <- matrix(y,nrow=length(y),ncol=length(xpost))
+  calcData_v <- prep_for_neg_log_lik_multivariate(xpost,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_v)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
 
 # Test a model with one continuous variable
 modSpec <- list(meanSpec='powLaw')
@@ -2075,6 +2132,56 @@ expect_equal(
   calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
   sum(etaVect_direct)
 )
+
+# Test calc_joint and calc_x_posterior
+for(w in c(0,2.5)) {
+  y <- w
+  Y <- matrix(y,nrow=length(y),ncol=length(xpost))
+  calcData_w <- prep_for_neg_log_lik_multivariate(xpost,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_w)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
 
 # Test a model with one ordinal and one continuous variable
 modSpec <- list(meanSpec=c('powLawOrd','powLaw'))
@@ -2197,6 +2304,56 @@ expect_equal(
   calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
   sum(etaVect_direct)
 )
+
+# Test calc_joint and calc_x_posterior
+for(n in 1:ncol(Ycalc)) {
+  y <- as.matrix(Ycalc[,n])
+  Y <- t(apply(y,1,rep,length(xpost)))
+  calcData_y <- prep_for_neg_log_lik_multivariate(xpost,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_y)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
 
 # Test a model with two ordinal and two continuous variable
 modSpec <- list(meanSpec=c('powLawOrd','powLawOrd','powLaw','powLaw'))
@@ -2329,6 +2486,56 @@ expect_equal(
   calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
   sum(etaVect_direct)
 )
+
+# Test calc_joint and calc_x_posterior
+for(n in 1:ncol(Ycalc)) {
+  y <- as.matrix(Ycalc[,n])
+  Y <- t(apply(y,1,rep,length(xpost)))
+  calcData_y <- prep_for_neg_log_lik_multivariate(xpost,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_y)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
 
 # Test a model with two ordinal and two continuous variable (with logOrd,
 # lin_pos_int, and some complexity in cdepGroups)
@@ -2503,6 +2710,65 @@ expect_equal(
   sum(etaVect_direct)
 )
 
+# Test calc_joint and calc_x_posterior
+for(n in 1:ncol(Ycalc)) {
+  # If the logOrd special case applies (y[2] > 0), subset to ensure that xpost is not zero
+  if(y[2] > 0) {
+    ind <- which(xpost != 0)
+  } else {
+    ind <- 1:length(xpost)
+  }
+
+  y <- as.matrix(Ycalc[,n])
+  Y <- t(apply(y,1,rep,length(xpost[ind])))
+
+
+  calcData_y <- prep_for_neg_log_lik_multivariate(xpost[ind],Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_y)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp[ind]
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost[ind],y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost[ind],y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib[ind]
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost[ind],y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost[ind],y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif[ind]
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost[ind],y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost[ind],y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
+
 # Test a model with two ordinal and two continuous variable (with linOrd,
 # lin_pos_int, and some complexity in cdepGroups)
 modSpec <- list(meanSpec=c('linOrd','powLawOrd','powLaw','powLaw'))
@@ -2675,3 +2941,53 @@ expect_equal(
   calc_neg_log_lik_multivariate(th_y_bar,calcData,tfCatVect),
   sum(etaVect_direct)
 )
+
+# Test calc_joint and calc_x_posterior
+for(n in 1:ncol(Ycalc)) {
+  y <- as.matrix(Ycalc[,n])
+  Y <- t(apply(y,1,rep,length(xpost)))
+  calcData_y <- prep_for_neg_log_lik_multivariate(xpost,Y,modSpec)
+  logLikVect <- -calc_neg_log_lik_vect_multivariate(th_y,calcData_y)
+  
+  # Exponential prior
+  logJointVect_exp <- logLikVect + logPriorVect_exp
+  jointVect_exp <- exp(logJointVect_exp)
+  jointVect_exp[!is.finite(jointVect_exp)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_exp,th_y,modSpec),
+    jointVect_exp / sum(jointVect_exp) / dx
+  )
+
+  # Weibull mixture prior
+  logJointVect_weib <- logLikVect + logPriorVect_weib
+  jointVect_weib <- exp(logJointVect_weib)
+  jointVect_weib[!is.finite(jointVect_weib)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_weib,th_y,modSpec),
+    jointVect_weib / sum(jointVect_weib) / dx
+  )
+
+  # Uniform prior
+  logJointVect_unif <- logLikVect + logPriorVect_unif
+  jointVect_unif <- exp(logJointVect_unif)
+  jointVect_unif[!is.finite(jointVect_unif)] <- 0
+  expect_equal(
+    calc_joint(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif
+  )
+
+  expect_equal(
+    calc_x_posterior(xpost,y,th_x_unif,th_y,modSpec),
+    jointVect_unif / sum(jointVect_unif) / dx
+  )
+}
