@@ -1187,3 +1187,84 @@ calcPdfWeibMix <- function(x, z, theta) {
   return(pdf)
 }
 
+
+#' Given the input vector x and Weibull mixture proportions and parameters z and
+#' theta, calculate the probability density function for the input vector x.
+#'
+#' @param th_y The parameter vector for the y-model to simulate with
+#' @param modSpec The model specification (for the y-model)
+#' @param N The number of samples to simulate
+#' @param th_x The parameterization for x
+#' @param x The vector of independent variables
+#' @return A list object of simulated data containing x, Y, and Ystar
+#' @export
+sim_multivariate <- function(th_y,modSpec,N=NA,th_x=NA,x=NA) {
+  # N is the number of simulated observations
+  # th_x parameterizes x. Currently, only a uniform or exponential distribution is supported
+  # th_y parameterizes y (given x)
+
+  have_x_model  <- !all(is.na(th_x)) && !is.na(N)
+  have_x_direct <- !all(is.na(x))
+
+  if(have_x_model + have_x_direct != 1) {
+    stop('Either (1) th_x and N should be input or (2) x should be input')
+  }
+
+  if(have_x_model) {
+    if(tolower(th_x$fitType) == 'exponential') {
+      x <- rexp(N,th_x$fit)
+    } else if(tolower(th_x$fitType) == 'uniform') {
+      x <- runif(N,th_x$fit[1],th_x$fit[2])
+    } else {
+      stop('Only uniform currently supported')
+    }
+  } else {
+    N <- length(x)
+  }
+
+  J <- get_J(modSpec)
+  K <- get_K(modSpec)
+
+  # Populate Ystar by iterating over observations
+  mapping <- get_var_index_multivariate_mapping(modSpec)
+  Ystar <- matrix(NA,J+K,N)
+  for(n in 1:N) {
+    if(J > 0) {
+      for(j in 1:J) {
+        th_v <- th_y[get_univariate_indices(modSpec,j=j)]
+        modSpec_j <- list(meanSpec=modSpec$meanSpec[j],noiseSpec=modSpec$noiseSpec[j],M=modSpec$M[j],J=1,K=0)
+        Ystar[j,n] <- calc_mean_univariate_ord(x[n],th_v,modSpec_j)
+      }
+    }
+
+    if(K > 0) {
+      for(k in 1:K) {
+        th_w <- th_y[get_univariate_indices(modSpec,k=k)]
+        modSpec_k <- list(meanSpec=modSpec$meanSpec[J+k],noiseSpec=modSpec$noiseSpec[J+k],J=0,K=1)
+        Ystar[J+k,n] <- calc_mean_univariate_cont(x[n],th_w,modSpec_k)
+      }
+    }
+
+    # Add noise to the latent vector for observation n
+    # The value of y = c(1,1,1,1) is immaterial in the following command because only covMat is used
+    cgi <- calc_cond_gauss_int_inputs(th_y,x[n],c(1,1,1,1),mapping)
+    Ystar[,n] <- Ystar[,n] + MASS::mvrnorm(mu=rep(0,J+K),Sigma=cgi$covMat)
+  }
+
+  Y <- Ystar
+  for(j in 1:J) {
+    tau_j <- th_y[get_var_index_multivariate_fast('tau',mapping,j=j)]
+    for(n in 1:N) {
+      # If the meanSpec is 'logOrd' and x[n] is zero, Ystar is infinity and the
+      # ordinal category, m, must be explicitly set to 0
+      if( Ystar[j,n] == -Inf) {
+        Y[j,n] <- 0
+      } else {
+        Y[j,n] <- as.numeric(cut(Ystar[j,n],c(-Inf,tau_j,Inf))) - 1 # The ordinal observation
+      }
+    }
+  }
+
+  return(list(x=x,Y=Y,Ystar=Ystar))
+}
+

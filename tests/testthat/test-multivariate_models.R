@@ -3163,3 +3163,96 @@ for(n in 1:ncol(Ycalc)) {
     jointVect_unif / sum(jointVect_unif) / dx
   )
 }
+
+# Test sim_multivariate, fit_all_univariate, and fit_multivariate on two models
+# (doGpBasedOptim is also indirectly tested)
+modSpec <- list(meanSpec=c('powLawOrd','logOrd','powLaw','powLaw'))
+modSpec$noiseSpec  <- c('const','lin_pos_int','lin_pos_int','const')
+modSpec$J <- 2
+modSpec$K <- 2
+modSpec$M <- c(2,2)
+modSpec$cdepSpec <- 'dep'
+modSpec$cdepGroups <- c(1,1,NA,2)
+
+th_y_sim <- c(
+              .65,            # mean parameters for j = 1
+              c(),            # mean parameters for j = 2 [no parameters for logOrd]
+              c(.45,110,-45), # mean parameters for k = 1
+              c(.55, 40, 15), # mean parameters for k = 2
+              c( 1,1.5),      # tau for j = 1
+              c(-1,1  ),      # tau for j = 2
+              .25,            # noise parameters for j = 1
+              c(.5,.02),      # noise parameters for j = 2
+              c(5,.04),       # noise parameters for k = 1
+              10,             # noise parameters for k = 2
+              c(.6,.25)       # correlation parameters (z)
+             )
+
+N <- 1000 # number of simulated observations
+
+th_x <- list(fitType='uniform',fit=c(0,5))
+
+# Check simulation for when N and th_x are input
+expect_error(
+  sim <- sim_multivariate(th_y_sim,modSpec,N,th_x),
+  NA
+)
+
+expect_equal(
+  names(sim),
+  c('x','Y','Ystar')
+)
+
+expect_equal(
+  length(sim$x),
+  N
+)
+
+expect_equal(
+  dim(sim$Ystar),
+  c(modSpec$J+modSpec$K,N)
+)
+
+expect_equal(
+  dim(sim$Y),
+  c(modSpec$J+modSpec$K,N)
+)
+
+# Check simulation when x is input. Use an x-vector with 0 to check the
+# functioning for j = 2 for which the meanSpec is 'logOrd'
+x <- c(rep(0,10),sim$x)
+N <- length(x)
+expect_error(
+  sim <- sim_multivariate(th_y_sim,modSpec,x=x),
+  NA
+)
+
+expect_equal(
+  names(sim),
+  c('x','Y','Ystar')
+)
+
+expect_equal(
+  length(sim$x),
+  N
+)
+
+expect_equal(
+  dim(sim$Ystar),
+  c(modSpec$J+modSpec$K,N)
+)
+
+expect_equal(
+  dim(sim$Y),
+  c(modSpec$J+modSpec$K,N)
+)
+
+expect_equal(
+  sim$Ystar[2,1:10],
+  rep(-Inf,10)
+)
+
+expect_equal(
+  sim$Y[2,1:10],
+  rep(0,10)
+)
