@@ -809,7 +809,7 @@ calc_neg_log_lik_vect_multivariate <- function(th_y,calcData,tfCatVect=NA) {
 
   N <- length(calcData)
 
-  negLogLikVect <- foreach(n=1:N,.combine=cbind,.packages=c('yada','ksoptim')) %dopar% {
+  negLogLikVect <- foreach(n=1:N,.combine=cbind,.packages=c('yada')) %dopar% {
     negLogLik_n <- calc_neg_log_lik_scalar_multivariate(th_y,calcData[[n]])
   }
   return(as.vector(negLogLikVect))
@@ -848,7 +848,7 @@ calc_neg_log_lik_vect_multivariate_chunk_outer <- function(th_y,calcData,tfCatVe
   N <- length(calcData)
   folds <- nestfs::create.folds(numChunks,N)
 
-  negLogLikVect <- foreach(k=1:numChunks,.combine=c,.packages=c('yada','ksoptim')) %dopar% {
+  negLogLikVect <- foreach(k=1:numChunks,.combine=c,.packages=c('yada')) %dopar% {
     calc_neg_log_lik_vect_multivariate_chunk_inner(th_y,calcData[folds[[k]]])
   }
 
