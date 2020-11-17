@@ -2080,7 +2080,7 @@ expect_equal(
   f_weib_direct
 )
 
-th_x_unif <- list(fitType='uniform',xmin=2,xmax=13.5)
+th_x_unif <- list(fitType='uniform',fit=c(2,13.5))
 
 f_unif_direct <- rep(0,length(xpost))
 for(n in 1:length(xpost)) {

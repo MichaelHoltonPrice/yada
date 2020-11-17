@@ -1129,11 +1129,13 @@ calc_joint <- function(xcalc,y,th_x,th_y,modSpec) {
 }
 
 #' Calculate the density at x given a parameterization for the density of
-#' theta_x. Currently, the exponential distribution, Weibull mixtures, and
-#' uniform distribution are supported.
+#' th_x. Currently, the exponential distribution, Weibull mixtures, and
+#' uniform distribution are supported. If fitType is 'exponential' or
+#' 'uniform', the fit parameter (fit) is a vector, whereas for 'offsetweibmix'
+#' it is a list with the vectors lambda (weighting), shape, and scale.
 #'
 #' @param x A vector of ages at which to calculate the density
-#' @param th_x A list with the fit type and parameter vector
+#' @param th_x A list with the fit type (fitType) and the fit parameter specification (fit; see details)
 #' @export
 calc_x_density <- function(x,th_x) {
   if(tolower(th_x$fitType) == 'exponential') { 
@@ -1142,9 +1144,9 @@ calc_x_density <- function(x,th_x) {
     return(calcPdfWeibMix(x+th_x$weibOffset,th_x$fit$lambda,c(rbind(th_x$fit$shape,th_x$fit$scale))))
   } else if (tolower(th_x$fitType) == 'uniform') { 
     f <- rep(1,length(x))
-    ind0 <- x < th_x$xmin | th_x$xmax < x
+    ind0 <- x < th_x$fit[1] | th_x$fit[2] < x
     f[ind0] <- 0
-    return(f/(th_x$xmax-th_x$xmin))
+    return(f/(th_x$fit[2]-th_x$fit[1]))
   } else {
     stop(paste('Unsupported fit type:',th_x$fitType))
   }
@@ -1184,3 +1186,4 @@ calcPdfWeibMix <- function(x, z, theta) {
   pdf <- rowSums(t(t(pdfMatrix) * z))
   return(pdf)
 }
+

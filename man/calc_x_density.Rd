@@ -3,18 +3,22 @@
 \name{calc_x_density}
 \alias{calc_x_density}
 \title{Calculate the density at x given a parameterization for the density of
-theta_x. Currently, the exponential distribution, Weibull mixtures, and
-uniform distribution are supported.}
+th_x. Currently, the exponential distribution, Weibull mixtures, and
+uniform distribution are supported. If fitType is 'exponential' or
+'uniform', the fit parameter (fit) is a vector, whereas for 'offsetweibmix'
+it is a list with the vectors lambda (weighting), shape, and scale.}
 \usage{
 calc_x_density(x, th_x)
 }
 \arguments{
 \item{x}{A vector of ages at which to calculate the density}
 
-\item{th_x}{A list with the fit type and parameter vector}
+\item{th_x}{A list with the fit type (fitType) and the fit parameter specification (fit; see details)}
 }
 \description{
 Calculate the density at x given a parameterization for the density of
-theta_x. Currently, the exponential distribution, Weibull mixtures, and
-uniform distribution are supported.
+th_x. Currently, the exponential distribution, Weibull mixtures, and
+uniform distribution are supported. If fitType is 'exponential' or
+'uniform', the fit parameter (fit) is a vector, whereas for 'offsetweibmix'
+it is a list with the vectors lambda (weighting), shape, and scale.
 }
