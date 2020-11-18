@@ -3188,7 +3188,7 @@ th_y_sim <- c(
               c(.6,.25)       # correlation parameters (z)
              )
 
-N <- 1000 # number of simulated observations
+N <- 100 # number of simulated observations
 
 th_x <- list(fitType='uniform',fit=c(0,5))
 
@@ -3217,6 +3217,12 @@ expect_equal(
   dim(sim$Y),
   c(modSpec$J+modSpec$K,N)
 )
+
+expect_error(
+  fit <- fit_multivariate(sim$x,sim$Y,modSpec),
+  NA
+)
+
 
 # Check simulation when x is input. Use an x-vector with 0 to check the
 # functioning for j = 2 for which the meanSpec is 'logOrd'
@@ -3255,4 +3261,9 @@ expect_equal(
 expect_equal(
   sim$Y[2,1:10],
   rep(0,10)
+)
+
+expect_error(
+  fit <- fit_multivariate(sim$x,sim$Y,modSpec),
+  NA
 )

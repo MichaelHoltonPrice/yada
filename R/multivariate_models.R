@@ -1187,9 +1187,11 @@ calcPdfWeibMix <- function(x, z, theta) {
   return(pdf)
 }
 
+# TODO: consider adding support for missing variables in sim_multivariate
 
-#' Given the input vector x and Weibull mixture proportions and parameters z and
-#' theta, calculate the probability density function for the input vector x.
+#' Create simulated observations for a multivariate mixed cumulative probit
+#' model. For x, either the number of samples (N) and a parameter vector (th_x)
+#' must be given, or the full vector (x) must be given.
 #'
 #' @param th_y The parameter vector for the y-model to simulate with
 #' @param modSpec The model specification (for the y-model)
@@ -1255,7 +1257,7 @@ sim_multivariate <- function(th_y,modSpec,N=NA,th_x=NA,x=NA) {
   for(j in 1:J) {
     tau_j <- th_y[get_var_index_multivariate_fast('tau',mapping,j=j)]
     for(n in 1:N) {
-      # If the meanSpec is 'logOrd' and x[n] is zero, Ystar is infinity and the
+      # If the meanSpec is 'logOrd' and x[n] is zero, Ystar is -Inf and the
       # ordinal category, m, must be explicitly set to 0
       if( Ystar[j,n] == -Inf) {
         Y[j,n] <- 0
@@ -1266,5 +1268,288 @@ sim_multivariate <- function(th_y,modSpec,N=NA,th_x=NA,x=NA) {
   }
 
   return(list(x=x,Y=Y,Ystar=Ystar))
+}
+
+#' Fit a multivariate mixed cumulative probit model.
+#'
+#' @param x The vector of independent variables
+#' @return A list object of simulated data containing x, Y, and Ystar
+#' @export
+fit_multivariate <- function(x,Y,modSpec) {
+
+  # Initialize by doing univariate fits
+  a     <- c() # the vector of   mean parameters
+  tau   <- c() # the vector of cutoff parameters
+  alpha <- c() # the vector of  noise parameters
+
+  # Iterate over ordinal variables to populate a, tau, and alpha
+  J <- get_J(modSpec)
+  if(J > 0) {
+    for(j in 1:J) {
+      # Create the model specification for this ordinal variable
+      modSpec_j <- list(meanSpec=modSpec$meanSpec[j],noiseSpec=modSpec$noiseSpec[j],M=modSpec$M[j],J=1,K=0)
+
+      # Account for possible missing observations
+      xj <- x
+      vj <- Y[j,]
+      ind_keep <- !is.na(xj) & !is.na(vj)
+      xj <- xj[ind_keep]
+      vj <- vj[ind_keep]
+
+      th_v <- fit_univariate_ord(xj,vj,modSpec_j,anneal=F)
+      a     <- c(a,    th_v[get_var_index_univariate_ord('b',modSpec_j)])    #    b corresponds to     a for ordinal models
+      tau   <- c(tau,  th_v[get_var_index_univariate_ord('tau',modSpec_j)])
+      alpha <- c(alpha,th_v[get_var_index_univariate_ord('beta',modSpec_j)]) # beta corresponds to alpha for ordinal models
+    }
+  }
+
+  # Iterate over continuous variables to populate a and alpha
+  K <- get_K(modSpec)
+  if(K > 0) {
+    for(k in 1:K) {
+      # Create the model specification for this continuous variable
+      modSpec_k <- list(meanSpec=modSpec$meanSpec[J+k],noiseSpec=modSpec$noiseSpec[J+k],J=0,K=1)
+
+      # Account for possible missing observations
+      xk <- x
+      wk <- Y[J+k,]
+      ind_keep <- !is.na(xk) & !is.na(wk)
+      xk <- xk[ind_keep]
+      wk <- wk[ind_keep]
+
+      th_w <- fit_univariate_cont(xk,wk,modSpec_k)
+      a     <- c(a,    th_w[get_var_index_univariate_cont('c',modSpec_k)])     #     c corresponds to     a for continuous models
+      alpha <- c(alpha,th_w[get_var_index_univariate_cont('kappa',modSpec_k)]) # kappa corresponds to alpha for continuous models
+    }
+  }
+
+  Nz <- get_z_length(modSpec) # number of correlation terms
+  th_y0 <- c(a,tau,alpha,rep(0,Nz)) # initial parameter vector
+
+  # Create the calculation data that supports rapid calculation of the negative log-likelihood
+  calcData <- prep_for_neg_log_lik_multivariate(x,Y,modSpec)
+
+  # Create the transform category vector so that the optimization can be unconstrained
+  tfCatVect <- get_multivariate_transform_categories(modSpec)
+
+  # Calculate the initial parameter vector in an unconstrained representation
+  th_y_bar0 <- param_constr2unconstr(th_y0,tfCatVect)
+
+
+  # Create a scale vector, scaleVect, which gives the standard deivations used
+  # to generate candidate parameter vectors in doGpBasedOptim
+  Np <- length(th_y0)
+  scaleVect <- c(rep(5e-5,Np-Nz),rep(5e-3,Nz))
+
+  # Solve the optimization problem
+  optimOutput <- doGpBasedOptim(th_y_bar0, calc_neg_log_lik_multivariate,scaleVect=scaleVect,maxEval=400,showPlot=T,verbose=F,catchErrors=T,calcData=calcData,tfCatVect=tfCatVect)
+
+  # Extract the fit (changing back to the constrained representation)
+  th_y <- param_unconstr2constr(optimOutput$param_best,tfCatVect)
+  
+  return(list(optimOutput=optimOutput,th_y=th_y))
+}
+
+#' Solve an unconstrained minimization problem that involves random selection of
+#' candidates followed by assessment of candidates using a Gaussian Process (GP)
+#' model based on previous calculations of the objective function (to increase
+#' estimation and evaluation speed of the GP, the fast local approximation of
+#' laGP package is used. Although  it is assumed that the optimization problem
+#' is unconstrained, the objective function can return Inf or NA (such points
+#' are not used in the GP model). Nmodel specifies the number of preceding
+#' observations to use for the GP model. Ncand specifies the number of
+#' candidates to check, where candidates are randomly chosen with a normal draw
+#' for which the mean equals the current best parameter vector and the standard
+#' deviations are specified by scaleVect and the standard deviation is. The
+#' candidate with the lowest estimated value of the objective function is chosen
+#' for the next evaluation of the objective function. An initial parameter
+#' vector, param0, must be specified. The optimization terminates either after
+#' the maximum number of evaulations, maxEval (default: 10000), have been made
+#' or the ojective function has failed to improve more than the objective
+#' function tolerance, objTol, over the last 4*Nmodel evaluations. The optional
+#' boolean input catchErrors allows catching errors in the call to objFun using
+#' try, and setting the ojective function value to Inf (infinity) if an error is
+#' encountered. catchErrors defaults to FALSE. The optional input verbose
+#' (default FALSE) specifies whether or not to print out summary information as
+#' the optimization proceeds. The optional input showPlot (default FALSE)
+#' specifies whether to plot the progress of the optimization algorithm as it
+#' proceeds. The optional input saveFile (default FALSE) specifies whether to
+#' save the state of the optimization after each function evaluation.
+#'
+#' @param param0 The starting parameter vector
+#' @param objFun The objective function
+#' @param scaleVect Scaling vector of standard deviations for drawing new candidate parameter vectors (default: rep(1e-4,length(param0))
+#' @param Nmodel Number of observations to use to build the Gaussian Process model.
+#' @param Ncand Number of randomly selected candidates to check with the Gaussian Process model
+#' @param maxEval Maximum number of evaluations of the objective function (default: 10000)
+#' @param objTol Tolerance to use in the stopping condition (see description; default: 1e-4)
+#' @param catchErrors Whether or not to catch errors in the objective function evaluation, and set the value to Inf (infinity) if an error occurs (default: FALSE)
+#' @param verbose Whether or not to print out progress of the optimization (default: FALSE)
+#' @param showPlot Whether or not to show a plot of the objective function value as the optimization proceeds (default: FALSE)
+#' @param saveFile An optional save file to store intermediate results of the optimization (default: NA, no saveFile used)
+#' @param oldFile An optional old file to initialize from if not first run
+#' @param ... Additional inputs to the objective function
+#' @return A list including key information about the optimization, including the best parameter vector (param_best) and value of the objective function at the best parameter vector (f_best).
+#' @export
+doGpBasedOptim <- function(param0,objFun,scaleVect=rep(1e-4,length(param0)),Nmodel=100,Ncand=100,maxEval=10000,objTol=1e-4,catchErrors=F,verbose=F,showPlot=F,saveFile=NA,oldFile=NA,...) {
+## Currently, the parameter matrix is always stored and saved. The following text could be used if this is made optional:
+## The
+## optional input saveParam (default: FALSE) specifies whether to store and
+## save to file (if saveFile is specified) the evaluated parameter vectors.
+## Setting saveParam to FALSE saves RAM, disk memory, and may speed up file
+## saves, though the impact is likely to be slight unless the parameter vector
+## is long and the number of evaluations is large.
+## @param saveParam An optional input specifying whether to track and save the evaluated parameter vectors (default: FALSE)
+
+  # Number of parameters
+  Np <- length(param0)
+
+  # Calculate the initial value of the objective function and initialize the
+  # best known solution
+  param_best <- param0
+
+  t0 <- Sys.time()
+  if(length(oldFile)==1){
+    if(!catchErrors) {
+      f0 <- objFun(param0,...)
+    } else {
+      f0 <- try(objFun(param0,...))
+      if(class(f0) == 'try-error') {
+        f0 <- Inf
+      }
+    }
+  } else {
+    f0 <- oldFile[['f_best']]
+  }
+  t1 <- Sys.time()
+
+  if(!is.finite(f0)) {
+    stop('Objective function is not finite at initial parameter vector (param0)')
+  }
+
+  if(verbose) {
+    print('--')
+    if(t1-t0 != 0){
+      print(paste0('Evaluation at initial parameter vector took ', as.numeric(t1-t0,units='secs'),' seconds'))
+    } else{
+      print('Not first call')
+    }
+    print('Value of objective function at initial parameter vector:')
+    print(f0)
+  }
+
+  f_best <- f0
+
+  # Create a matrix, paramMat, for storing parameter vectors that have been
+  # checked and a vector, objVect, for storing the associated value of the
+  # objective function. Parameter vectors that evaluate to Inf or NA are not
+  # included in paramMat or objVect. However, they are included in the vector
+  # objVectFull, which is used for plotting. Only if oldFile==NA
+  if(length(oldFile)==1){
+    paramMat <- matrix(param0,nrow=1)
+    objVect <- matrix(f0,nrow=1)
+    objVectFull <- matrix(f0,nrow=1)
+  }else{
+    paramMat <- oldFile[['paramMat']]
+    objVect <- oldFile[['objVect']]
+    objVectFull <- oldFile[['objVectFull']]
+    maxEval <- maxEval - length(objectFull)
+  }
+
+  # If a save file is specified, store the inputs in a list. The inputs specified via ... are not stored
+  inputs <- list(param0=param0,objFun=objFun,scaleVect=scaleVect,Nmodel=Nmodel,Ncand=Ncand,maxEval=maxEval,objTol=objTol,catchErrors=catchErrors,verbose=verbose,showPlot=showPlot,saveFile=saveFile)
+
+  # Begin main loop
+  for(s in 1:(maxEval-1)) {
+    if(s <= 2) {
+      # For the first two samples, make a single random draw for the parameter
+      # vector to add
+      param_to_add <- param_best + rnorm(Np)*scaleVect
+    } else {
+      # After the first two draws, use a Gaussian Process to choose the
+      # parameter vector to add
+
+      # Initialize a matrix to store candidate vectors to add, then populate it
+      # with random samples
+      paramMatToCheck <- matrix(NA,nrow=Ncand,ncol=Np)
+      for(sc in 1:Ncand) {
+        paramMatToCheck[sc,] <- param_best + rnorm(Np)*scaleVect
+      }
+
+      # Create a Gaussian Process model to approximate the objective function,
+      # subtracting the initial value of the objective function (f0). This is
+      # based on the Nmodel preceding parameter evaluations. If there are fewer
+      # than Nmodel preceding parameter evaluations, use the ones available.
+      if(nrow(paramMat) < Nmodel) {
+        gp <- laGP::newGP(paramMat, objVect-f0, 2, 1e-6, dK = TRUE)
+      } else {
+        ind <- (nrow(paramMat) - Nmodel + 1):nrow(paramMat)
+        gp <- laGP::newGP(paramMat[ind,], objVect[ind] - f0, 2, 1e-6, dK = TRUE)
+      }
+
+      
+      laGP::mleGP(gp, tmax=20)
+      p <- laGP::predGP(gp, paramMatToCheck)
+      laGP::deleteGP(gp)
+      param_to_add <- paramMatToCheck[which.min(p$mean),]
+    }
+
+    t0 <- Sys.time()
+    if(!catchErrors) {
+      f_prop <- objFun(param_to_add,...)
+    } else {
+      f_prop <- try(objFun(param_to_add,...))
+      if(class(f_prop) == 'try-error') {
+        f_prop <- Inf
+      }
+    }
+    t1 <- Sys.time()
+    if(verbose) {
+      print('--')
+      print(paste0('Evaluation #',s,' took ', as.numeric(t1-t0,units='secs'),' seconds'))
+      print('Value of objective function at proposed parameter vector:')
+      print(f_prop)
+    }
+
+    if(is.finite(f_prop)) {
+      paramMat <- rbind(paramMat,param_to_add)
+      objVect  <- rbind(objVect,f_prop)
+      objVectFull <- rbind(objVectFull,f_prop)
+
+      if(f_prop < f_best) {
+        param_best <- param_to_add
+        f_best <- f_prop
+      }
+    } else {
+      objVectFull <- rbind(objVectFull,NA)
+    }
+
+
+    if(verbose) {
+      print('Improvement in objective function per evaluation:')
+      print((f0-f_best)/length(objVectFull))
+      plot(objVectFull + f0)
+    }
+
+    if(!is.na(saveFile)) {
+      saveRDS(list(paramMat=paramMat,objVect=objVect,objVectFull=objVectFull,param_best=param_best,f_best=f_best,f0=f0,param0=param0,inputs=inputs),saveFile)
+    }
+
+    if(showPlot) {
+      plot(1:length(objVectFull),objVectFull,xlab='Evaluation Number',ylab='Objective Function Value')
+    }
+
+    # If necessary, check the stopping condition
+    if(nrow(paramMat) >= 4*Nmodel + 1) {
+      ind <- (nrow(paramMat) - 4*Nmodel + 1):nrow(paramMat) # indices of the preceding 4*Nmodel evaluations
+      f_stopping <- min(objVect[-ind]) # The best objective function value before the indices to be checked
+      improvement <- f_stopping - objVect[ind] # The improvement of the indices to be checked; positive if things got better
+      if(!any(improvement > objTol)) {
+        break
+      }
+    }
+  }
+
+  return(list(paramMat=paramMat,objVect=objVect,objVectFull=objVectFull,param_best=param_best,f_best=f_best,f0=f0,param0=param0,inputs=inputs))
 }
 
