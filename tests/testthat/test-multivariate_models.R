@@ -3219,7 +3219,7 @@ expect_equal(
 )
 
 expect_error(
-  fit <- fit_multivariate(sim$x,sim$Y,modSpec),
+  fit <- fit_multivariate(sim$x,sim$Y,modSpec,optimControl=list(maxEval=200,seed=1000,verbose=F,catchErrors=T)),
   NA
 )
 
@@ -3264,6 +3264,6 @@ expect_equal(
 )
 
 expect_error(
-  fit <- fit_multivariate(sim$x,sim$Y,modSpec),
+  fit <- fit_multivariate(sim$x,sim$Y,modSpec,optimControl=list(maxEval=200,seed=1001,verbose=F,catchErrors=T)),
   NA
 )
