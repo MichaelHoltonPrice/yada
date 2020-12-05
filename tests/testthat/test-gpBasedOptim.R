@@ -83,3 +83,230 @@ expect_equal(
   optimResult$legData[[1]]$saveFile,
   NA
 )
+
+# The following code does not test that the optimum (x0,y0) is found, but does
+# test that doGpBasedOptim can be initialized with a save file. Use the
+# tempdir() function to get the temp directory to use for the check.
+saveFile1 <- paste0(tempdir(),'/leg1.rds')
+saveFile2 <- paste0(tempdir(),'/leg2.rds')
+if(file.exists(saveFile1)) {
+  file.remove(saveFile1)
+}
+
+if(file.exists(saveFile2)) {
+  file.remove(saveFile2)
+}
+
+expect_equal(
+  file.exists(saveFile1),
+  F
+)
+
+expect_error(
+  optimResult1 <- doGpBasedOptim(c(0.1,0.1),objFun=quadObj,control=list(seed=2000,maxEval=60,Nmodel=20,Ncand=30),saveFile=saveFile1,x0=.5,y0=-1.5),
+  NA
+)
+
+expect_equal(
+  file.exists(saveFile1),
+  T
+)
+
+expect_equal(
+  file.exists(saveFile2),
+  F
+)
+
+optimResult1_from_file <- readRDS(saveFile1)
+
+expect_equal(
+  optimResult1,
+  optimResult1_from_file
+)
+
+expect_equal(
+  names(optimResult1),
+  c("paramMat","objVect","objVectFull","param_best","f_best","legData" )
+)
+
+expect_equal(
+  dim(optimResult1$paramMat),
+  c(20,2)
+)
+
+expect_equal(
+  dim(optimResult1$objVect),
+  c(20,1)
+)
+
+expect_equal(
+  dim(optimResult1$objVectFull),
+  c(61,1)
+)
+
+expect_equal(
+  length(optimResult1$param_best),
+  2
+)
+
+expect_equal(
+  length(optimResult1$f_best),
+  1
+)
+
+expect_equal(
+  length(optimResult1$legData),
+  1
+)
+
+expect_equal(
+  names(optimResult1$legData[[1]]),
+  c("param0","f0","objFun","control0","control","saveFile")
+)
+
+expect_equal(
+  optimResult1$legData[[1]]$param0,
+  c(0.1,0.1),
+)
+
+expect_equal(
+  optimResult1$legData[[1]]$f0,
+  .4^2 + 1.6^2
+)
+
+expect_equal(
+  all.equal(optimResult1$legData[[1]]$objFun,quadObj),
+  T
+)
+
+expect_equal(
+  optimResult1$legData[[1]]$control0,
+  list(seed=2000,maxEval=60,Nmodel=20,Ncand=30),
+)
+
+expect_equal(
+  optimResult1$legData[[1]]$control,
+  list(scaleVect=c(1e-4,1e-4),Nmodel=20,Ncand=30,maxEval=60,objTol=1e-4,catchErrors=F,seed=2000,verbose=F,showPlot=F),
+)
+
+expect_equal(
+  optimResult1$legData[[1]]$saveFile,
+  saveFile1
+)
+
+# Run a new leg using the save file. Reset some control variables.
+expect_equal(
+  file.exists(saveFile2),
+  F
+)
+
+expect_error(
+  optimResult2 <- doGpBasedOptim(saveFile1,control=list(Nmodel=30,Ncand=20,maxEval=70,seed=3000),saveFile=saveFile2,x0=.5,y0=-1.5),
+  NA
+)
+
+expect_equal(
+  file.exists(saveFile2),
+  T
+)
+
+optimResult2_from_file <- readRDS(saveFile2)
+
+expect_equal(
+  optimResult2,
+  optimResult2_from_file
+)
+
+expect_equal(
+  names(optimResult2),
+  c("paramMat","objVect","objVectFull","param_best","f_best","legData" )
+)
+
+expect_equal(
+  dim(optimResult2$paramMat),
+  c(30,2)
+)
+
+expect_equal(
+  dim(optimResult2$objVect),
+  c(30,1)
+)
+
+expect_equal(
+  dim(optimResult2$objVectFull),
+  c(131,1)
+)
+
+expect_equal(
+  length(optimResult2$param_best),
+  2
+)
+
+expect_equal(
+  length(optimResult2$f_best),
+  1
+)
+
+expect_equal(
+  length(optimResult2$legData),
+  2
+)
+
+expect_equal(
+  names(optimResult2$legData[[1]]),
+  c("param0","f0","objFun","control0","control","saveFile")
+)
+
+expect_equal(
+  optimResult2$legData[[1]]$param0,
+  c(0.1,0.1),
+)
+
+expect_equal(
+  optimResult2$legData[[1]]$f0,
+  .4^2 + 1.6^2
+)
+
+expect_equal(
+  all.equal(optimResult2$legData[[1]]$objFun,quadObj),
+  T
+)
+
+expect_equal(
+  optimResult2$legData[[1]]$control0,
+  list(seed=2000,maxEval=60,Nmodel=20,Ncand=30),
+)
+
+expect_equal(
+  optimResult2$legData[[1]]$control,
+  list(scaleVect=c(1e-4,1e-4),Nmodel=20,Ncand=30,maxEval=60,objTol=1e-4,catchErrors=F,seed=2000,verbose=F,showPlot=F),
+)
+
+expect_equal(
+  optimResult2$legData[[1]]$saveFile,
+  saveFile1
+)
+
+expect_equal(
+  optimResult2$legData[[2]]$control0,
+  list(Nmodel=30,Ncand=20,maxEval=70,seed=3000),
+)
+
+expect_equal(
+  optimResult2$legData[[2]]$control,
+  list(scaleVect=c(1e-4,1e-4),Nmodel=30,Ncand=20,maxEval=70,objTol=1e-4,catchErrors=F,seed=3000,verbose=F,showPlot=F),
+)
+
+expect_equal(
+  optimResult2$legData[[2]]$saveFile,
+  saveFile2
+)
+
+# Make sure an error is thrown if an invalid control variable is input
+expect_error(
+  doGpBasedOptim(c(0.1,0.1),objFun=quadObj,control=list(seed=2000,maxEval=60,Nmodel=20,Ncand=30,bad=T),saveFile=saveFile1,x0=.5,y0=-1.5),
+  'Unrecognized control parameter, bad'
+)
+
+file.remove(saveFile1)
+file.remove(saveFile2)
