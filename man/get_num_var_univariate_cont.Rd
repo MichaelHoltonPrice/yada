@@ -2,8 +2,8 @@
 % Please edit documentation in R/univariate_models.R
 \name{get_num_var_univariate_cont}
 \alias{get_num_var_univariate_cont}
-\title{Calculate the negative log-likelihood, eta_w, for a univariate continuous
-model.}
+\title{Get the number of parameters for named variables of a univariate, continuous
+model}
 \usage{
 get_num_var_univariate_cont(varName, modSpec)
 }
@@ -11,21 +11,11 @@ get_num_var_univariate_cont(varName, modSpec)
 \item{varName}{The variable name (either c or kappa)}
 
 \item{modSpec}{The model specification}
-
-\item{x}{The independent variable}
-
-\item{w}{The continuous response}
-
-\item{th_w}{The parameter vector}
 }
 \value{
-The negative log-likelihood, eta_w
-Get the number of parameters for named variables of a univariate, continuous
-model
-
 The number of parameters
 }
 \description{
-Calculate the negative log-likelihood, eta_w, for a univariate continuous
-model.
+Get the number of parameters for named variables of a univariate, continuous
+model
 }

@@ -60,10 +60,6 @@ yada_sample_mcmc <- function(neg_log_lik,theta0,numSamp,temp,propScale,...) {
   return(output)
 }
 
-#  # Refine with a call to optim
-#  optimControl <- list(reltol=1e-12,maxit=100000,ndeps=rep(1e-8,length(theta_best)))
-#  fitBFGS <- optim(theta_best,neg_log_lik,method='BFGS',control=optimControl,...)
-
 #' A tailored optimization using simulated annealing that works well for
 #' univariate models. The annealing can be used by itself for optimization or
 #' to initialize another optimization algorithm. While this optimization via

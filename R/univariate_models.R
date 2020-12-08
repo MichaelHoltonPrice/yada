@@ -1,18 +1,3 @@
-###' Calculate the negative log-likelihood, eta_w, for a univariate continuous
-###' model.
-###'
-###' @param x The independent variable
-###' @param w The continuous response
-###' @param th_w The parameter vector
-###' @param modSpec The model specification
-###' @return The negative log-likelihood, eta_w
-###calc_cont_neg_log_lik <- function(x,w,th_w,modSpec) {
-#
-#  kappa <- th_w[get_var_index('alpha',modSpec,i=1)]
-#  cc    <- th_w[get_var_index,'a',i=1] # use cc instead of c since is defined for base R
-#  return(noiseSpec_str)
-#}
-
 #' Get the number of parameters for named variables of a univariate, continuous
 #' model
 #'
@@ -225,7 +210,6 @@ calc_neg_log_lik_vect_ord <- function(th_v,x,v,modSpec,tfCatVect=NA) {
 calc_neg_log_lik_ord <- function(th_v,x,v,modSpec,tfCatVect=NA) {
   return(sum(calc_neg_log_lik_vect_ord(th_v,x,v,modSpec,tfCatVect)))
 }
-
 
 #' Calcuate the vector of negative log-likelihoods for a continuous model
 #'
