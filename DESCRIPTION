@@ -1,0 +1,34 @@
+Type: Package
+Package: yada
+Title: Yet Another Demographic Analysis package
+Version: 0.0.1
+Author: Michael Holton Price
+Maintainer: Michael Holton Price <michaelholtonprice@sgmail.com>
+Description: yada, "Yet Another Demographic
+    Analysis" package, implements age estimation using a mixed cumulative
+    probit model.
+License: MIT + file LICENSE
+Imports:
+    mvtnorm,
+    condMVNorm,
+    dfoptim,
+    laGP,
+    foreach,
+    doParallel,
+    MASS,
+    mixtools,
+    nestfs,
+    numDeriv,
+    gtools,
+    rmarkdown
+Suggests:
+    devtools,
+    knitr,
+    testthat
+VignetteBuilder: 
+    knitr
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Depends: 
+    R (>= 3.5)
