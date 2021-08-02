@@ -776,51 +776,69 @@ expect_equal(
 expect_equal(
   build_file_path(data_dir,
                   analysis_name,
-                  "cindep_ord_soln",
+                  "univariate_ord_soln",
                   j=2,
                   var_name="var_name",
                   mean_spec="log_ord",
                   noise_spec="const"),
-  file.path(tempdir(),paste0("solutiony_US-analysis_cindep_ord_j_2_",
+  file.path(tempdir(),paste0("solutiony_US-analysis_ord_j_2_",
                              "var_name_log_ord_const.rds"))
 )
 
 expect_equal(
   build_file_path(data_dir,
                   analysis_name,
-                  "cindep_ord_soln",
+                  "univariate_ord_soln",
                   j=2,
                   var_name="var_name",
                   mean_spec="log_ord",
                   noise_spec="const",
                   fold=2),
-  file.path(tempdir(),paste0("solutiony_US-analysis_fold2_cindep_ord_j_2_",
+  file.path(tempdir(),paste0("solutiony_US-analysis_fold2_ord_j_2_",
                              "var_name_log_ord_const.rds"))
 )
 
 expect_equal(
   build_file_path(data_dir,
                   analysis_name,
-                  "cindep_cont_soln",
+                  "univariate_ord_rmd",
+                  j=2,
+                  var_name="var_name"),
+  file.path(tempdir(),"US-analysis_ord_j_2_var_name.Rmd")
+)
+
+expect_equal(
+  build_file_path(data_dir,
+                  analysis_name,
+                  "univariate_cont_soln",
                   k=2,
                   var_name="var_name",
                   mean_spec="pow_law",
                   noise_spec="const"),
-  file.path(tempdir(),paste0("solutiony_US-analysis_cindep_cont_k_2_",
+  file.path(tempdir(),paste0("solutiony_US-analysis_cont_k_2_",
                              "var_name_pow_law_const.rds"))
 )
 
 expect_equal(
   build_file_path(data_dir,
                   analysis_name,
-                  "cindep_cont_soln",
+                  "univariate_cont_soln",
                   k=2,
                   var_name="var_name",
                   mean_spec="pow_law",
                   noise_spec="const",
                   fold=2),
-  file.path(tempdir(),paste0("solutiony_US-analysis_fold2_cindep_cont_k_2_",
+  file.path(tempdir(),paste0("solutiony_US-analysis_fold2_cont_k_2_",
                              "var_name_pow_law_const.rds"))
+)
+
+expect_equal(
+  build_file_path(data_dir,
+                  analysis_name,
+                  "univariate_cont_rmd",
+                  k=2,
+                  var_name="var_name"),
+  file.path(tempdir(),"US-analysis_cont_k_2_var_name.Rmd")
 )
 
 expect_equal(
@@ -835,7 +853,7 @@ expect_equal(
 
 expect_equal(
   build_file_path(data_dir,analysis_name,"cv_data"),
-  file.path(tempdir(),"cv_data_cindep_US-analysis.rds")
+  file.path(tempdir(),"cv_data_univariate_US-analysis.rds")
 )
 
 expect_equal(
@@ -849,13 +867,28 @@ expect_equal(
 )
 
 expect_equal(
-  build_file_path(data_dir,analysis_name,"mcp_optim_result"),
-  file.path(tempdir(),"mcp_optim_result_US-analysis.rds")
+  build_file_path(data_dir,analysis_name,"cindep_model"),
+  file.path(tempdir(),"cindep_model_US-analysis.rds")
 )
 
 expect_equal(
-  build_file_path(data_dir,analysis_name,"mcp_optim_result",fold=2),
-  file.path(tempdir(),"mcp_optim_result_US-analysis_fold2.rds")
+  build_file_path(data_dir,analysis_name,"hjk_progress"),
+  file.path(tempdir(),"hjk_progress_US-analysis.rds")
+)
+
+expect_equal(
+  build_file_path(data_dir,analysis_name,"hjk_progress",fold=2),
+  file.path(tempdir(),"hjk_progress_US-analysis_fold2.rds")
+)
+
+expect_equal(
+  build_file_path(data_dir,analysis_name,"cdep_model"),
+  file.path(tempdir(),"cdep_model_US-analysis.rds")
+)
+
+expect_equal(
+  build_file_path(data_dir,analysis_name,"cdep_model",fold=2),
+  file.path(tempdir(),"cdep_model_US-analysis_fold2.rds")
 )
 
 # Test yada::build_univariate_ord_problems

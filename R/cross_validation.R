@@ -207,7 +207,7 @@ crossval_univariate_models <- function(data_dir,
         parsed_model <- parse_joined_model(k_m)
         soln0 <- readRDS(build_file_path(data_dir,
                                          analysis_name,
-                                         "cindep_ord_soln",
+                                         "univariate_ord_soln",
                                          j=j,
                                          var_name=prob0$var_names[j],
                                          mean_spec=parsed_model[1],
@@ -216,8 +216,8 @@ crossval_univariate_models <- function(data_dir,
         # Failed fits, which are of class try-error, must be dealt with
         if(class(soln0) != 'try-error') {
           have_param_mat <- T
-          param_mat <- matrix(NA,length(soln0$theta_y_vect),1+num_folds)
-          param_mat[,1] <- soln0$theta_y_vect
+          param_mat <- matrix(NA,length(soln0$th_y),1+num_folds)
+          param_mat[,1] <- soln0$th_y
           mod_spec <- soln0$mod_spec
         } else {
           param_mat <- matrix(NA,0,0)
@@ -230,7 +230,7 @@ crossval_univariate_models <- function(data_dir,
           # Read the solution (fit) for this fold
           soln_f <- readRDS(build_file_path(data_dir,
                                             analysis_name,
-                                            "cindep_ord_soln",
+                                            "univariate_ord_soln",
                                             j=j,
                                             var_name=prob0$var_names[j],
                                             mean_spec=parsed_model[1],
@@ -256,12 +256,12 @@ crossval_univariate_models <- function(data_dir,
               # work, but this one does.
               mod_spec <- soln_f$mod_spec
               have_param_mat <- T
-              param_mat <- matrix(NA,length(soln_f$theta_y_vect),1+num_folds)
+              param_mat <- matrix(NA,length(soln_f$th_y),1+num_folds)
             }
             # Store the parameters and do the actual negative log-likelihood
             # calculation
-            param_mat[,1+f] <- soln_f$theta_y_vect
-            cv_array_ord[n,f,j] <- calc_neg_log_lik_ord(soln_f$theta_y_vect,
+            param_mat[,1+f] <- soln_f$th_y
+            cv_array_ord[n,f,j] <- calc_neg_log_lik_ord(soln_f$th_y,
                                                       x,
                                                       v,
                                                       soln_f$mod_spec)
@@ -465,7 +465,7 @@ crossval_univariate_models <- function(data_dir,
         parsed_model <- parse_joined_model(k_m)
         soln0 <- readRDS(build_file_path(data_dir,
                                          analysis_name,
-                                         "cindep_cont_soln",
+                                         "univariate_cont_soln",
                                          k=k,
                                          var_name=prob0$var_names[J+k],
                                          mean_spec=parsed_model[1],
@@ -474,8 +474,8 @@ crossval_univariate_models <- function(data_dir,
         # Failed fits, which are of class try-error, must be dealt with
         if(class(soln0) != 'try-error') {
           have_param_mat <- T
-          param_mat <- matrix(NA,length(soln0$theta_y_vect),1+num_folds)
-          param_mat[,1] <- soln0$theta_y_vect
+          param_mat <- matrix(NA,length(soln0$th_y),1+num_folds)
+          param_mat[,1] <- soln0$th_y
           mod_spec <- soln0$mod_spec
         } else {
           param_mat <- matrix(NA,0,0)
@@ -489,7 +489,7 @@ crossval_univariate_models <- function(data_dir,
           # Read the solution (fit) for this fold
           soln_f <- readRDS(build_file_path(data_dir,
                                             analysis_name,
-                                            "cindep_cont_soln",
+                                            "univariate_cont_soln",
                                             k=k,
                                             var_name=prob0$var_names[J+k],
                                             mean_spec=parsed_model[1],
@@ -515,12 +515,12 @@ crossval_univariate_models <- function(data_dir,
               # work, but this one does.
               mod_spec <- soln_f$mod_spec
               have_param_mat <- T
-              param_mat <- matrix(NA,length(soln_f$theta_y_vect),1+num_folds)
+              param_mat <- matrix(NA,length(soln_f$th_y),1+num_folds)
             }
             # Store the parameters and do the actual negative log-likelihood
             # calculation
-            param_mat[,1+f] <- soln_f$theta_y_vect
-            cv_array_cont[n,f,k] <- calc_neg_log_lik_cont(soln_f$theta_y_vect,
+            param_mat[,1+f] <- soln_f$th_y
+            cv_array_cont[n,f,k] <- calc_neg_log_lik_cont(soln_f$th_y,
                                                           x,
                                                           w,
                                                           soln_f$mod_spec)
@@ -657,7 +657,7 @@ crossval_univariate_models <- function(data_dir,
 #' and generates an rMarkdown report in the same directory where the files are
 #' housed. (Typically this is the results folder).
 #' 
-#' @param data_dir Directory where the problem and CV files are
+#' @param data_dir Directory where the problem and CV files are saved
 #' @param analysis_name analysis_name for file-naming
 #' @param j The ordinal variable number
 #' @param line_width User-defined line widths. Default is NA
@@ -684,9 +684,14 @@ write_ordinal_report <- function(data_dir,analysis_name,j,line_width=NA) {
 
   # Open an rmarkdown file to programatically generate a report (deleting the
   # file if it already exists)
-  # TODO: consider adding the following file to build_file_path
-  rm_file <- file.path(data_dir,paste0('cindep_ord_j_',j,
-                                       '_',prob0$var_names[j],'.Rmd'))
+  rm_file <- build_file_path(data_dir,
+                             analysis_name,
+                             "univariate_ord_rmd",
+                             j=j,
+                             var_name=prob0$var_names[j])
+  
+  # rm_file <- file.path(data_dir,paste0('cindep_ord_j_',j,
+  #                                      '_',prob0$var_names[j],'.Rmd'))
   if (file.exists(rm_file)) {
     file.remove(rm_file)
   }
@@ -809,9 +814,16 @@ write_continuous_report <- function(data_dir,analysis_name,k,line_width=NA) {
   # file if it already exists)
   # TODO: consider adding the following file to build_file_path
   J <- yada::get_J(prob0$mod_spec)
-  rm_file <- file.path(data_dir,
-                       paste0('cindep_cont_k_',k,'_',
-                              prob0$var_names[J+k],'.Rmd'))
+  
+  rm_file <- build_file_path(data_dir,
+                             analysis_name,
+                             "univariate_cont_rmd",
+                             k=k,
+                             var_name=prob0$var_names[J+k])
+  
+  # rm_file <- file.path(data_dir,
+  #                      paste0('cindep_cont_k_',k,'_',
+  #                             prob0$var_names[J+k],'.Rmd'))
   if (file.exists(rm_file)) {
     file.remove(rm_file)
   }
@@ -1007,19 +1019,19 @@ get_univariate_variable_cases <- function(data_dir,analysis_name,j=NA,k=NA) {
                                }))]
   # Subset to fits for this variable
   if(!is.na(j)) {
-    # The pattern is 'cindep_ord_j_2_' for j=2.
+    # The pattern is 'ord_j_2_' for j=2.
     files <- files[unlist(lapply(files,
                                  function(f){
-                                   grepl(paste0('cindep_ord_j_',
+                                   grepl(paste0('ord_j_',
                                                 j,
                                                 '_'),
                                          f)
                                  }))]
   } else {
-    # The pattern is 'cindep_cont_k_2_' for k=2.
+    # The pattern is 'cont_k_2_' for k=2.
     files <- files[unlist(lapply(files,
                                  function(f){
-                                   grepl(paste0('cindep_cont_k_',
+                                   grepl(paste0('cont_k_',
                                                 k,
                                                 '_'),
                                          f)
@@ -1265,6 +1277,7 @@ generate_mod_spec <- function(problem,
 #' @param data_dir Directory to save univariate model parameters
 #' @param analysis_name analysis_name for file-naming
 #' @param var_name The variable name for the model to load
+#' @param fold Fold number. If NA, pull from main solution.
 #' @param load_data Whether to also load the data vector (x and y) (default:
 #'   FALSE)
 #'
@@ -1276,6 +1289,7 @@ generate_mod_spec <- function(problem,
 load_best_univariate_model <- function(data_dir,
                                        analysis_name,
                                        var_name,
+                                       fold=NA,
                                        load_data=FALSE) {
   # Read the cross-validation data and main problem
   cv_data <- readRDS(build_file_path(data_dir, analysis_name, "cv_data"))
@@ -1285,6 +1299,13 @@ load_best_univariate_model <- function(data_dir,
   ind_var <- which(problem$var_names == var_name)
   if (length(ind_var) != 1) {
     stop("var_name should match exactly one entry in problem$var_names")
+  }
+  
+  # Identify whether main or fold parameters should be extracted
+  if(is.na(fold)) {
+    th_y_col <- "main"
+  } else {
+    th_y_col <- paste0("fold",fold)
   }
 
   # Ordinal variables run from 1 to J and continuous variable run from J+1 to
@@ -1301,7 +1322,7 @@ load_best_univariate_model <- function(data_dir,
     mean_spec <- mean_noise[1]
     noise_spec <- mean_noise[2]
     # Extract the main solution (first column) for the best model
-    th_y <- as.vector(cv_data$param_list_ord[[j]][[ind_best_model]][,1])
+    th_y <- as.vector(cv_data$param_list_ord[[j]][[ind_best_model]][,th_y_col])
     M <- problem$mod_spec$M[j]
     mod_spec <- list(J=1,
                      K=0,
@@ -1318,7 +1339,7 @@ load_best_univariate_model <- function(data_dir,
     mean_spec <- mean_noise[1]
     noise_spec <- mean_noise[2]
     # Extract the main solution (first column) for the best model
-    th_y <- as.vector(cv_data$param_list_cont[[k]][[ind_best_model]][,1])
+    th_y <- as.vector(cv_data$param_list_cont[[k]][[ind_best_model]][,th_y_col])
     mod_spec <- list(J=0,
                      K=1,
                      mean_spec=mean_spec,
@@ -1349,27 +1370,38 @@ load_best_univariate_model <- function(data_dir,
 #'
 #' @param data_dir Directory to save univariate model parameters
 #' @param analysis_name analysis_name for file-naming
+#' @param fold Fold number. If NA, build model from main solution.
 #' @param calc_se Whether to calculate the standard error for th_y_bar
+#' @param save_file Logical whether to save cindep model as an .rds file
 #' @return A list with the parameter vector (th_y), model specification
 #'   (mod_spec), and transformed parameter vector (th_y_bar). If calc_se is
 #'   TRUE, the standard error for th_y_bar is added (th_y_bar_se).
 #'
 #' @export
-build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
+build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
+                               save_file=F) {
   problem_file <- build_file_path(data_dir,
                                   analysis_name,
                                   "main_problem")
   problem <- readRDS(problem_file)
-
-  model_params <- get_best_univariate_params(data_dir, analysis_name)
-  mod_spec <- generate_mod_spec(problem, model_params, cdep_spec='dep')
-  mod_spec$cdep_spec <- "indep"
+  
+  # model_params <- get_best_univariate_params(data_dir, analysis_name)
+  # mod_spec <- generate_mod_spec(problem, model_params, cdep_spec='dep')
+  # mod_spec$cdep_spec <- "indep"
+  # J <- mod_spec$J
+  # K <- mod_spec$K
+  
+  mod_spec <- problem$mod_spec
+  
   J <- mod_spec$J
   K <- mod_spec$K
 
   a     <- c()
   tau   <- c()
   alpha <- c()
+  mean_spec <- c()
+  noise_spec <- c()
+  
 
   if (calc_se) {
     a_scale   <- c()
@@ -1383,6 +1415,7 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
       best_model <- load_best_univariate_model(data_dir,
                                                analysis_name,
                                                var_name,
+                                               fold,
                                                load_data=calc_se)
       th_v       <- best_model$th_y
       mod_spec_j <- best_model$mod_spec
@@ -1392,6 +1425,9 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
                                                         mod_spec_j)])
       alpha <- c(alpha, th_v[get_var_index_univariate_ord("beta",
                                                           mod_spec_j)])
+      mean_spec <- c(mean_spec, mod_spec_j$mean_spec)
+      noise_spec <- c(noise_spec, mod_spec_j$noise_spec)
+      
       if (calc_se) {
         ord_dummy <- function(th_v_bar, input_list) {
           return(calc_neg_log_lik_ord(th_v_bar,
@@ -1410,7 +1446,18 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
         H <- numDeriv::hessian(ord_dummy,
                                th_v_bar,
                                input_list=input_list)
-        se <- sqrt(diag(solve(H)))
+        
+        # se <- sqrt(diag(solve(H)))
+        se <- tryCatch (
+          {sqrt(diag(solve(H)))},
+          error=function(cond) {
+            return(rep(NA,times=length(diag(H))))
+          },
+          warning=function(cond) {
+            return(rep(NA,times=length(diag(H))))
+          }
+        )
+
         a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
                                                              mod_spec_j,
                                                              j=1)])
@@ -1423,6 +1470,22 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
       }
     }
   }
+  
+  # if(calc_se) {
+  #   ## Replace NAs with median parameter values
+  #   if(any(is.na(a_scale))) {
+  #     na_idx <- which(is.na(a_scale))
+  #     a_scale[na_idx] <- median(a_scale, na.rm=TRUE)
+  #   }
+  #   if(any(is.na(tau_scale))) {
+  #     na_idx <- which(is.na(tau_scale))
+  #     tau_scale[na_idx] <- median(tau_scale, na.rm=TRUE)
+  #   }
+  #   if(any(is.na(alpha_scale))) {
+  #     na_idx <- which(is.na(alpha_scale))
+  #     alpha_scale[na_idx] <- median(alpha_scale, na.rm=TRUE)
+  #   }
+  # }
 
   if (K > 0) {
     for (k in 1:K) {
@@ -1430,6 +1493,7 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
       best_model <- load_best_univariate_model(data_dir,
                                                analysis_name,
                                                var_name,
+                                               fold,
                                                load_data=calc_se)
       th_w       <- best_model$th_y
       mod_spec_k <- best_model$mod_spec
@@ -1437,6 +1501,9 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
                                                      mod_spec_k)])
       alpha <- c(alpha, th_w[get_var_index_univariate_cont("kappa",
                                                           mod_spec_k)])
+      mean_spec <- c(mean_spec, mod_spec_k$mean_spec)
+      noise_spec <- c(noise_spec, mod_spec_k$noise_spec)
+      
       if (calc_se) {
         cont_dummy <- function(th_w_bar, input_list) {
           return(calc_neg_log_lik_cont(th_w_bar,
@@ -1455,7 +1522,16 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
         H <- numDeriv::hessian(cont_dummy,
                                th_w_bar,
                                input_list=input_list)
-        se <- sqrt(diag(solve(H)))
+        # se <- sqrt(diag(solve(H)))
+        se <- tryCatch (
+          {sqrt(diag(solve(H)))},
+          error=function(cond) {
+            return(rep(NA,times=length(diag(H))))
+          },
+          warning=function(cond) {
+            return(rep(NA,times=length(diag(H))))
+          }
+        )
         a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
                                                              mod_spec_k,
                                                              k=1)])
@@ -1465,7 +1541,22 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
       }
     }
   }
+  
+  if(calc_se) {
+    if(any(is.na(a_scale))) {
+      na_idx <- which(is.na(a_scale))
+      a_scale[na_idx] <- median(a_scale, na.rm=TRUE)
+    }
+    if(any(is.na(alpha_scale))) {
+      na_idx <- which(is.na(alpha_scale))
+      alpha_scale[na_idx] <- median(alpha_scale, na.rm=TRUE)
+    }
+  }
 
+  mod_spec$mean_spec <- mean_spec
+  mod_spec$noise_spec <- noise_spec
+  mod_spec$cdep_spec <- "indep"
+  
   tf_cat_vect <- get_multivariate_transform_categories(mod_spec)
   th_y <- c(a,tau,alpha)
   th_y_bar <- param_constr_to_unconstr(th_y, tf_cat_vect)
@@ -1474,5 +1565,133 @@ build_cindep_model <- function(data_dir, analysis_name, calc_se=FALSE) {
   if(calc_se) {
     output$th_y_bar_se = c(a_scale, tau_scale, alpha_scale)
   }
+  
+  
+  if(save_file) {
+    saveRDS(output, build_file_path(data_dir,analysis_name,"cindep_model",fold=fold))
+  }
+  
   return(output)
 }
+
+#' @title Calculate multivariate (cindep and cdep) negative-log-likelihoods
+#' for cross-validation 
+#' 
+#' @description Function that loads the cindep and cdep models folds,  
+#' performs negative-log-likelihood calculations, and returns vectors for
+#' each corresponding model
+#' 
+#' @param data_dir Directory where the problem and model files are saved
+#' @param analysis_name Unique identifier for current analysis
+#' @param fold Fold number
+#' 
+#' @export
+
+crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
+  # mcp_file_name <- paste0("results/mcp_optim_save_US_fold", fold, ".rds")
+  # mcp_soln <- readRDS(mcp_file_name)
+  # mod_spec_cdep <- mcp_soln$mod_spec
+  # th_y_cdep <- mcp_soln$th_y
+  # 
+  # mod_spec_cindep <- mod_spec_cdep
+  # mod_spec_cindep$cdep_groups <- NULL
+  # mod_spec_cindep$cdep_spec = "indep"
+  cindep_soln <- readRDS(build_file_path(data_dir,
+                                         analysis_name,
+                                         "cindep_model",
+                                         fold=fold))
+  mod_spec_cindep <- cindep_soln$mod_spec
+  th_y_cindep <- cindep_soln$th_y
+  
+  cdep_soln <- readRDS(build_file_path(data_dir,
+                                      analysis_name,
+                                      "cdep_model",
+                                      fold=fold))
+  mod_spec_cdep <- cdep_soln$mod_spec
+  th_y_cdep <- cdep_soln$th_y
+  # 
+  # J <- mod_spec_cindep$J
+  # K <- mod_spec_cindep$K
+  # 
+  # a     <- c()
+  # tau   <- c()
+  # alpha <- c()
+  # problem0 <- readRDS(build_file_path(data_dir,
+  #                                     analysis_name,
+  #                                     "main_problem"))
+  # 
+  # if (J > 0) {
+  #   for (j in 1:J) {
+  #     var_name <- problem0$var_names[j]
+  #     file_path <- build_file_path(data_dir,
+  #                                  analysis_name,
+  #                                  "cindep_ord_soln",
+  #                                  j=j,
+  #                                  var_name=var_name,
+  #                                  mean_spec=mod_spec_cindep$mean_spec[j],
+  #                                  noise_spec=mod_spec_cindep$noise_spec[j],
+  #                                  fold=fold)
+  #     ord_soln <- readRDS(file_path)
+  #     mod_spec_j <- ord_soln$mod_spec
+  #     ind_a <- get_var_index_multivariate("a", mod_spec_j)
+  #     a <- c(a, ord_soln$theta_y_vect[ind_a])
+  #     ind_tau <- get_var_index_multivariate("tau", mod_spec_j)
+  #     tau <- c(tau, ord_soln$theta_y_vect[ind_tau])
+  #     ind_alpha <- get_var_index_multivariate("alpha", mod_spec_j)
+  #     alpha <- c(alpha, ord_soln$theta_y_vect[ind_alpha])
+  #   }
+  # }
+  # 
+  # if (K > 0) {
+  #   for (k in 1:K) {
+  #     var_name <- problem0$var_names[J+k]
+  #     
+  #     file_path <- build_file_path(data_dir,
+  #                                  analysis_name,
+  #                                  "cindep_cont_soln",
+  #                                  k=k,
+  #                                  var_name=var_name,
+  #                                  mean_spec=mod_spec_cindep$mean_spec[J+k],
+  #                                  noise_spec=mod_spec_cindep$noise_spec[J+k],
+  #                                  fold=fold)
+  #     cont_soln <- readRDS(file_path)
+  #     mod_spec_k <- cont_soln$mod_spec
+  #     ind_a <- get_var_index_multivariate("a", mod_spec_k)
+  #     a <- c(a, cont_soln$theta_y_vect[ind_a])
+  #     ind_alpha <- get_var_index_multivariate("alpha", mod_spec_k)
+  #     alpha <- c(alpha, cont_soln$theta_y_vect[ind_alpha])
+  #   }
+  # }
+  # th_y_cindep <- c(a, tau, alpha)
+  
+  # Load test data
+  file_path <- build_file_path(data_dir,
+                               analysis_name,
+                               "test_problem",
+                               fold=fold)
+  problem <- readRDS(file_path)
+  
+  calc_data_cindep <- prep_for_neg_log_lik_multivariate(problem$x,
+                                                        problem$Y,
+                                                        mod_spec_cindep)
+  calc_data_cdep   <- prep_for_neg_log_lik_multivariate(problem$x,
+                                                        problem$Y,
+                                                        mod_spec_cdep)
+  
+  eta_vect_cindep <- calc_neg_log_lik_vect_multivariate(th_y_cindep,
+                                                        calc_data_cindep)
+  eta_vect_cdep   <- calc_neg_log_lik_vect_multivariate(th_y_cdep,
+                                                        calc_data_cdep)
+  
+  # return(list(th_y_cindep,
+  #             th_y_cdep=th_y_cdep,
+  #             mod_spec_cindep=mod_spec_cindep,
+  #             mod_spec_cdep=mod_spec_cdep,
+  #             problem=problem,
+  #             eta_vect_cindep=eta_vect_cindep,
+  #             eta_vect_cdep=eta_vect_cdep))
+  
+  return(list(eta_vect_cindep=eta_vect_cindep,
+              eta_vect_cdep=eta_vect_cdep))
+}
+

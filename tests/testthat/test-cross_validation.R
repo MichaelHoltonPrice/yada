@@ -56,14 +56,14 @@ for (mean_spec in "pow_law") {
       }
       file_path <- build_file_path(data_dir,
                                    analysis_name,
-                                   "cindep_cont_soln",
+                                   "univariate_cont_soln",
                                k=1,
                                var_name="FDL",
                                mean_spec=mean_spec,
                                noise_spec=noise_spec,
                                fold=fold)
       th_y <- cont_theta_y_list[[mean_spec]][[noise_spec]][[run]]
-      solutiony <- list(theta_y_vect=th_y,
+      solutiony <- list(th_y=th_y,
                         mod_spec = list(
                           mean_spec = mean_spec,
                           noise_spec = noise_spec,
@@ -130,14 +130,14 @@ for (mean_spec in c("pow_law_ord", "log_ord", "lin_ord")) {
       }
       file_path <- build_file_path(data_dir,
                                    analysis_name,
-                                   "cindep_ord_soln",
+                                   "univariate_ord_soln",
                                    j=1,
                                    var_name="FH_EF",
                                    mean_spec=mean_spec,
                                    noise_spec=noise_spec,
                                    fold=fold)
       th_y <- ord_theta_y_list[[mean_spec]][[noise_spec]][[run]]
-      solutiony <- list(theta_y_vect=th_y,
+      solutiony <- list(th_y=th_y,
                         mod_spec = list(
                           mean_spec = mean_spec,
                           noise_spec = noise_spec,
@@ -241,7 +241,7 @@ expect_equal(
 solutiony_cont_pow_law_const_fold2 <-
   readRDS(build_file_path(data_dir,
                           analysis_name,
-                          "cindep_cont_soln",
+                          "univariate_cont_soln",
                           k=1,
                           var_name="FDL",
                           mean_spec="pow_law",
@@ -251,7 +251,7 @@ saveRDS(solutiony_cont_pow_law_const_fold2,
         file.path(data_dir,
                   paste0('solutiony_',
                          analysis_name,
-                         '_fold3_cindep_cont_k_1_FDL_pow_law_const.rds')))
+                         '_fold3_cont_k_1_FDL_pow_law_const.rds')))
 expect_error(
   crossval_univariate_models(data_dir, analysis_name, 0.05, 0.1, 5),
   "All variables should have the same number of folds"
@@ -259,7 +259,7 @@ expect_error(
 success <- file.remove(file.path(data_dir,
                                  paste0('solutiony_',
                                         analysis_name,
-                                        '_fold3_cindep_cont_k_1_FDL_pow_law',
+                                        '_fold3_cont_k_1_FDL_pow_law',
                                         '_const.rds')))
 
 expect_warning(
@@ -301,24 +301,24 @@ expect_equal(
 expect_error(
   write_matrix(cv_data$cv_array_ord,
                file.path(data_dir,
-                         'cindep_ord_j_1_FH_EF.Rmd')),
+                         'US-analysis_ord_j_1_FH_EF.Rmd')),
   NA
 )
 expect_true(
-  file.exists(file.path(data_dir,'cindep_ord_j_1_FH_EF.Rmd'))
+  file.exists(file.path(data_dir,'US-analysis_ord_j_1_FH_EF.Rmd'))
 )
 success <- file.remove(file.path(data_dir,
-                                 'cindep_ord_j_1_FH_EF.Rmd'))
+                                 'US-analysis_ord_j_1_FH_EF.Rmd'))
 
 expect_error(
   write_matrix(cv_data$cv_array_cont,
-               file.path(data_dir,'cindep_cont_k_1_FDL.Rmd')),
+               file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd')),
   NA
 )
 expect_true(
-  file.exists(file.path(data_dir,'cindep_cont_k_1_FDL.Rmd'))
+  file.exists(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
 )
-success <- file.remove(file.path(data_dir,'cindep_cont_k_1_FDL.Rmd'))
+success <- file.remove(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
 
 # Test write_ordinal_report
 expect_error(
@@ -326,16 +326,16 @@ expect_error(
   NA
 )
 expect_true(
-  file.exists(file.path(data_dir,'cindep_ord_j_1_FH_EF.Rmd'))
+  file.exists(file.path(data_dir,'US-analysis_ord_j_1_FH_EF.Rmd'))
 )
-success <- file.remove(file.path(data_dir, 'cindep_ord_j_1_FH_EF.Rmd'))
+success <- file.remove(file.path(data_dir, 'US-analysis_ord_j_1_FH_EF.Rmd'))
 expect_true(
-  file.exists(file.path(data_dir,'cindep_ord_j_1_FH_EF.html'))
+  file.exists(file.path(data_dir,'US-analysis_ord_j_1_FH_EF.html'))
 )
-success <- file.remove(file.path(data_dir, 'cindep_ord_j_1_FH_EF.html'))
+success <- file.remove(file.path(data_dir, 'US-analysis_ord_j_1_FH_EF.html'))
 
 expect_false(
-  file.exists(file.path(data_dir,'cindep_ord_j_5_FH_EF.Rmd'))
+  file.exists(file.path(data_dir,'US-analysis_ord_j_5_FH_EF.Rmd'))
 )
 
 # Test write_continuous_report
@@ -344,16 +344,16 @@ expect_error(
   NA
 )
 expect_true(
-  file.exists(file.path(data_dir,'cindep_cont_k_1_FDL.Rmd'))
+  file.exists(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
 )
-success <- file.remove(file.path(data_dir,'cindep_cont_k_1_FDL.Rmd'))
+success <- file.remove(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
 expect_true(
-  file.exists(file.path(data_dir,'cindep_cont_k_1_FDL.html'))
+  file.exists(file.path(data_dir,'US-analysis_cont_k_1_FDL.html'))
 )
-success <- file.remove(file.path(data_dir, 'cindep_cont_k_1_FDL.html'))
+success <- file.remove(file.path(data_dir, 'US-analysis_cont_k_1_FDL.html'))
 
 expect_false(
-  file.exists(file.path(data_dir,'\\cindep_cont_k_5_FDL.html'))
+  file.exists(file.path(data_dir,'\\US-analysis_cont_k_5_FDL.html'))
 )
 
 # Test parse_joined_model
@@ -574,5 +574,60 @@ expect_equal(
   )
 )
 
+expect_false(s
+  file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
+)
+
+expect_error(
+  cindep_model1 <- build_cindep_model(data_dir, analysis_name, 
+                                      calc_se=T, save_file=T),
+  NA
+)
+
+expect_equal(
+  
+)
+
+expect_true(
+  file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
+)
+success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis.rds"))
+
+expect_error(
+  cindep_model2 <- build_cindep_model(data_dir, analysis_name, 
+                                      fold=1, save_file=T),
+  NA
+)
+
+expect_true(
+  file.exists(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds"))
+)
+success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds"))
+
+expect_error(
+  cindep_model_main <- build_cindep_model(data_dir, analysis_name,
+                                          save_file=T),
+  NA
+)
+
+expect_error(
+  cindep_model_fold1 <- build_cindep_model(data_dir, analysis_name, 
+                                           fold=1, save_file=T),
+  NA
+)
+
+expect_error(
+  cindep_model_fold2 <- build_cindep_model(data_dir, analysis_name, 
+                                           fold=2, save_file=T),
+  NA
+)
+
 # TODO: Check build_cindep_model when calc_se is TRUE. It cannot be checked
 # with the preceding inputs since the resulting Hessian is singular.
+
+# Test crossval_multivariate_models?? -- needs calc_se=TRUE to work...
+
+
+
+
+

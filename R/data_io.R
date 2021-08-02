@@ -1114,11 +1114,12 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
 #' This function returns the path to one of these files. Which one is
 #' specified by the variables [file_type] and fold. [file_type] is a string that
 #' must be one of: 'main_problem', 'test_problem', 'training_problem',
-#' 'cindep_ord_soln', 'cindep_cont_soln', 'solutionx', 'cv_data', 'mcp_inputs',
-#' and 'mcp_optim_results'. If [file_type] is 'test_problem' or
-#' 'training_problem', a valid fold number must be input. If [file_type] is
-#' 'cindep_ord_soln', 'cindep_cont_soln', 'solutionx', 'mcp_inputs', or
-#' 'mcp_optim_result', a fold a fold number may be input.
+#' 'univariate_ord_soln', 'univariate_cont_soln', 'solutionx', 'cv_data', 
+#' 'mcp_inputs', 'cindep_model', 'hjk_progress', and 'cdep_model'. If 
+#' [file_type] is test_problem' or training_problem', a valid fold number 
+#' is required as input. If [file_type] is univariate_ord_soln', 
+#' 'univariate_cont_soln', 'solutionx', mcp_inputs', 
+#' 'hjk_progress', or 'cdep_model, a fold number may be input.
 #'
 #' @param data_dir The data directory with problems and results
 #' @param analysis_name A unique analysis name (for the input data directory)'
@@ -1143,23 +1144,27 @@ build_file_path <- function(data_dir,analysis_name,file_type,
     file_name <- paste0("test_",analysis_name,"_fold",fold,".rds")
   } else if (file_type ==  "training_problem") {
     file_name <- paste0("train_",analysis_name,"_fold",fold,".rds")
-  } else if (file_type ==  "cindep_ord_soln") {
+  } else if (file_type ==  "univariate_ord_soln") {
     # Examples of two univariate solutions:
-    #   solutiony_US_cindep_ord_j_1_FH_EF_log_ord_lin_pos_int.rds
-    #   solutiony_US_fold1_cindep_cont_k_13_RDL_pow_law_const.rds
+    #   solutiony_US_ord_j_1_FH_EF_log_ord_lin_pos_int.rds
+    #   solutiony_US_fold1_cont_k_13_RDL_pow_law_const.rds
     file_name <- paste0("solutiony_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
-    file_name <- paste0(file_name,"_cindep_ord_j_",j,"_",var_name,
+    file_name <- paste0(file_name,"_ord_j_",j,"_",var_name,
                         "_",mean_spec,"_",noise_spec,".rds")
-  } else if (file_type ==  "cindep_cont_soln") {
+  } else if (file_type == "univariate_ord_rmd") {
+    file_name <- paste0(analysis_name,"_ord_j_",j,"_",var_name,".Rmd")
+  } else if (file_type ==  "univariate_cont_soln") {
     file_name <- paste0("solutiony_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
-    file_name <- paste0(file_name,"_cindep_cont_k_",k,"_",var_name,
+    file_name <- paste0(file_name,"_cont_k_",k,"_",var_name,
                         "_",mean_spec,"_",noise_spec,".rds")
+  } else if (file_type == "univariate_cont_rmd") {
+    file_name <- paste0(analysis_name,"_cont_k_",k,"_",var_name,".Rmd")
   } else if (file_type ==  "solutionx") {
     file_name <- paste0("solutionx_",analysis_name)
     if (!is.na(fold)) {
@@ -1167,15 +1172,27 @@ build_file_path <- function(data_dir,analysis_name,file_type,
     }
     file_name <- paste0(file_name,".rds")
   } else if (file_type ==  "cv_data") {
-    file_name <- paste0("cv_data_cindep_",analysis_name,".rds")
+    file_name <- paste0("cv_data_univariate_",analysis_name,".rds")
   } else if (file_type == "mcp_inputs") {
     file_name <- paste0("mcp_inputs_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
     file_name <- paste0(file_name,".rds")
-  } else if (file_type == "mcp_optim_result") {
-    file_name <- paste0("mcp_optim_result_",analysis_name)
+  } else if (file_type == "cindep_model") {
+    file_name <- paste0("cindep_model_",analysis_name)
+    if (!is.na(fold)) {
+      file_name <- paste0(file_name,"_fold",fold)
+    }
+    file_name <- paste0(file_name,".rds")
+  } else if(file_type == "hjk_progress") {
+    file_name <- paste0("hjk_progress_",analysis_name)
+    if (!is.na(fold)) {
+      file_name <- paste0(file_name,"_fold",fold)
+    }
+    file_name <- paste0(file_name,".rds")
+  } else if (file_type == "cdep_model") {
+    file_name <- paste0("cdep_model_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
@@ -1321,7 +1338,7 @@ build_univariate_ord_problems <- function(data_dir,
 solve_ord_problem <- function(data_dir, analysis_name, ord_prob,
                               anneal_seed=NA) {
 
-  theta_y_vect <- try(yada::fit_univariate_ord(ord_prob$x,
+  th_y <- try(yada::fit_univariate_ord(ord_prob$x,
                                                ord_prob$v,
                                                ord_prob$mod_spec,
                                                anneal_seed=anneal_seed),
@@ -1332,7 +1349,7 @@ solve_ord_problem <- function(data_dir, analysis_name, ord_prob,
                                      "main_problem"))
 
 
-  file_type <- "cindep_ord_soln"
+  file_type <- "univariate_ord_soln"
   if (ord_prob$prob_type == "main") {
     fold <- NA
   } else {
@@ -1348,11 +1365,11 @@ solve_ord_problem <- function(data_dir, analysis_name, ord_prob,
                                noise_spec=ord_prob$mod_spec$noise_spec,
                                fold=fold)
 
-  if(class(theta_y_vect) == "try-error") {
-    saveRDS(theta_y_vect,file_path)
+  if(class(th_y) == "try-error") {
+    saveRDS(th_y,file_path)
     return(F)
   } else {
-    saveRDS(list(theta_y_vect=theta_y_vect,mod_spec=ord_prob$mod_spec),
+    saveRDS(list(th_y=th_y,mod_spec=ord_prob$mod_spec),
             file_path)
     return(T)
   }
@@ -1483,7 +1500,7 @@ build_univariate_cont_problems <- function(data_dir,
 # TODO: consider whether to save problems to file rather than inputing them.
 solve_cont_problem <- function(data_dir, analysis_name, cont_prob) {
 
-  theta_y_vect <- try(yada::fit_univariate_cont(cont_prob$x,
+  th_y <- try(yada::fit_univariate_cont(cont_prob$x,
                                                 cont_prob$w,
                                                 cont_prob$mod_spec),
                       silent=T)
@@ -1493,9 +1510,9 @@ solve_cont_problem <- function(data_dir, analysis_name, cont_prob) {
                                      "main_problem"))
 
 
-  J <- get_J(problem$mod_spec)
+  # J <- get_J(problem$mod_spec)
 
-  file_type <- "cindep_cont_soln"
+  file_type <- "univariate_cont_soln"
   if (cont_prob$prob_type == "main") {
     fold <- NA
   } else {
@@ -1511,11 +1528,11 @@ solve_cont_problem <- function(data_dir, analysis_name, cont_prob) {
                                noise_spec=cont_prob$mod_spec$noise_spec,
                                fold=fold)
 
-  if(class(theta_y_vect) == "try-error") {
-    saveRDS(theta_y_vect,file_path)
+  if(class(th_y) == "try-error") {
+    saveRDS(th_y,file_path)
     return(F)
   } else {
-    saveRDS(list(theta_y_vect=theta_y_vect,mod_spec=cont_prob$mod_spec),
+    saveRDS(list(th_y=th_y,mod_spec=cont_prob$mod_spec),
             file_path)
     return(T)
   }
