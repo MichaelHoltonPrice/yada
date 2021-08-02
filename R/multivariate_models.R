@@ -1484,10 +1484,10 @@ sim_multivariate <- function(th_y,mod_spec,N=NA,th_x=NA,x=NA) {
 #'
 #' @description
 #' Do a maximum likelihood fit of  multivariate mixed cumulative probit model
-#' using the Hooke-Jeeves algorithm. The parameter vector used in the
+#' using the Hooke-Jeeves (hjk) algorithm. The parameter vector used in the
 #' optimization has, roughly, a mean of zero and an expectation that the best
 #' actual value is within about +/-1 of the starting value. This is
-#' accomplished by substracting the mean of the conditionally dependent fit and
+#' accomplished by subtracting the mean of the conditionally dependent fit and
 #' dividing by the standard error of the conditionally dependent fit.
 #'
 #' @param x The vector of independent variables
