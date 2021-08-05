@@ -779,6 +779,8 @@ remove_missing_variables <- function(y0,mod_spec0) {
 
   if(J0 == 0) {
     J = 0
+  } else if (J0 == 1 & sum(keep[1]) == 0) {
+    J = 1
   } else {
     J <- sum(keep[1:J0])
   }
@@ -790,19 +792,29 @@ remove_missing_variables <- function(y0,mod_spec0) {
   }
 
   y <- y0[keep]
-  mod_spec <- list(mean_spec=mod_spec0$mean_spec[keep])
-  mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
-  mod_spec$J <- J
-  mod_spec$K <- K
-  if(J > 0) {
-    mod_spec$M <- mod_spec0$M[keep[1:J0]]
-  }
-  mod_spec$cdep_spec <- mod_spec0$cdep_spec
+  # mod_spec <- list(mean_spec=mod_spec0$mean_spec[keep])
+  # mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
+  # mod_spec$J <- J
+  # mod_spec$K <- K
+  # if(J > 0) {
+  #   mod_spec$M <- mod_spec0$M[keep[1:J0]]
+  # }
+  # mod_spec$cdep_spec <- mod_spec0$cdep_spec
 
   if (J+K == 1) {
-    mod_spec$cdep_spec = "cindep"
+    mod_spec <- mod_spec0
+    mod_spec$cdep_spec <- 'indep'
+  } else {
+    mod_spec <- list(mean_spec=mod_spec0$mean_spec[keep])
+    mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
+    mod_spec$J <- J
+    mod_spec$K <- K
+    if(J > 0) {
+      mod_spec$M <- mod_spec0$M[keep[1:J0]]
+    }
+    mod_spec$cdep_spec <- mod_spec0$cdep_spec
   }
-
+  
   if(mod_spec$cdep_spec == 'dep') {
     groups0         <- mod_spec0$cdep_groups
     groups0_reduced <- mod_spec0$cdep_groups[keep]
@@ -957,12 +969,19 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,mod_spec) {
       warning=function(w) {
         message(n)
       })
+    
+    if (length(remap$y) == 0) {
+      next
+    }
     calc_data_n <- list(x=x[n],y=remap$y,mod_spec=remap$mod_spec,
                        mapping=remap$mapping,mapping0=remap$mapping0,
                        ind=remap$ind,keep=remap$keep)
     calc_data[[n]] <- calc_data_n
+    
   }
 
+  calc_data <- calc_data[lengths(calc_data)!=0]  # remove null objects
+  
   return(calc_data)
 }
 
@@ -1691,9 +1710,13 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
     xmin <- xmin - (xmax-xmin)*.25
     xmax <- xmax + (xmax-xmin)*.25
 
-    # Ensure that xmin not negative
+    # Ensure that xmin is not negative
     if (xmin < 0) {
-      xmin <- 0
+      if (mod_spec$mean_spec == "log_ord") {  # if log_ord, x cannot be 0
+        xmin <- 0.0001
+      } else {
+        xmin <- 0
+      }
     }
 
     # Use 1000 samples for xcalc on the range xmin to xmax
@@ -1741,6 +1764,11 @@ calc_joint <- function(xcalc,y,th_x,th_y,mod_spec) {
   log_lik_vect <- -calc_neg_log_lik_vect_multivariate(th_y,calc_data)
 
   log_prior_vect <- log(calc_x_density(xcalc,th_x))
+  
+  if (length(xcalc) != length(calc_data)) {
+    diff <- length(xcalc) - length(calc_data)
+    log_prior_vect <- log_prior_vect[-diff]
+  }
 
   log_joint_vect <- log_lik_vect + log_prior_vect
 

@@ -7,7 +7,7 @@
 write_ordinal_report(data_dir, analysis_name, j, line_width = NA)
 }
 \arguments{
-\item{data_dir}{Directory where the problem and CV files are}
+\item{data_dir}{Directory where the problem and CV files are saved}
 
 \item{analysis_name}{analysis_name for file-naming}
 

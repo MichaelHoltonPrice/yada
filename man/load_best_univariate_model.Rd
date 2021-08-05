@@ -9,6 +9,7 @@ load_best_univariate_model(
   data_dir,
   analysis_name,
   var_name,
+  fold = NA,
   load_data = FALSE
 )
 }
@@ -18,6 +19,8 @@ load_best_univariate_model(
 \item{analysis_name}{analysis_name for file-naming}
 
 \item{var_name}{The variable name for the model to load}
+
+\item{fold}{Fold number. If NA, pull from main solution.}
 
 \item{load_data}{Whether to also load the data vector (x and y) (default:
 FALSE)}

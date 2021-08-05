@@ -1358,6 +1358,57 @@ load_best_univariate_model <- function(data_dir,
   }
 }
 
+#' @title Generate the confidence intervals for a given a cross-validated
+#' ordinal variable
+#'
+#' @description This function returns the point estimate, 95% and 99%
+#' confidence intervals for each ordinal stage of a given response variable.
+#'
+#' @param data_dir Directory where files are saved
+#' @param analysis_name Unique identifier for current analysis
+#' @param var_name Response variable name
+#' @param th_x Parameterization for prior on x
+#' @param save_file Logical whether the resulting data frame should be saved
+#' as an .rds file
+#'
+#' @export
+
+generate_ord_ci <- function(data_dir, analysis_name, var_name, 
+                            th_x, save_file=F) {
+  
+  # Load the best ordinal model
+  ord_model <- load_best_univariate_model(data_dir, analysis_name,
+                                          var_name)
+  
+  # Calculate the confidence intervals and point estimate
+  ci_df <- calc_ci_ord(ord_model, th_x)
+  
+  if(save_file) {
+    saveRDS(ci_df, build_file_path(data_dir,
+                                   analysis_name,
+                                   "ordinal_ci",
+                                   var_name=var_name))
+  }
+  
+  return(ci_df)
+}
+
+#' @title Clear all the files in the temporary directory
+#'
+#' @description
+#' Clear all the files in the temporary directory. Directories are not deleted.
+#' clear_temp_dir is used in testing.
+#'
+#' @export
+clear_temp_dir <- function() {
+  for (f in dir(tempdir())) {
+    full_path <- file.path(tempdir(),f)
+    if (!dir.exists(full_path)) {
+      success <- file.remove(full_path)
+    }
+  }
+}
+
 #' @title
 #' Build a multivariate, conditionally independent model using the univariate
 #' cross-validation results.

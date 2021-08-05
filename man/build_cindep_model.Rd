@@ -5,14 +5,24 @@
 \title{Build a multivariate, conditionally independent model using the univariate
 cross-validation results.}
 \usage{
-build_cindep_model(data_dir, analysis_name, calc_se = FALSE)
+build_cindep_model(
+  data_dir,
+  analysis_name,
+  fold = NA,
+  calc_se = FALSE,
+  save_file = F
+)
 }
 \arguments{
 \item{data_dir}{Directory to save univariate model parameters}
 
 \item{analysis_name}{analysis_name for file-naming}
 
+\item{fold}{Fold number. If NA, build model from main solution.}
+
 \item{calc_se}{Whether to calculate the standard error for th_y_bar}
+
+\item{save_file}{Logical whether to save cindep model as an .rds file}
 }
 \value{
 A list with the parameter vector (th_y), model specification

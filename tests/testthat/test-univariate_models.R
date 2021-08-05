@@ -1,6 +1,3 @@
-# TODO:
-# get_approx_x_range_ord
-# get_approx_x_range_cont
 
 # Test yada::get_num_var_univariate_ord
 expect_equal(
@@ -908,3 +905,66 @@ expect_equal(
   bin_lists$bin_counts,
   matrix(c(1,0,2,1,0,3),ncol=3)
 )
+
+# Test yada::calc_ci_ord
+library(doParallel)
+registerDoParallel(detectCores()-4)
+
+ord_model <- list(th_y=c(b_pow_law_ord,tau1,tau2,beta_const),
+                  mod_spec=list(
+                    J=1,
+                    K=0,
+                    M=2,
+                    mean_spec="lin_ord",
+                    noise_spec="const"
+                  ))
+th_x <- list(fit_type="uniform",
+             fit=c(0,80))
+
+set.seed(2021)
+expect_error(
+  ci_df <- calc_ci_ord(ord_model,th_x),
+  NA
+)
+
+expect_equal(
+  ci_df[3,2],
+  60.00
+)
+
+expect_equal(
+  ci_df[2,3],
+  8.07
+)
+
+expect_equal(
+  colnames(ci_df),
+  c("ord_stage","point_est","CI95_lower","CI95_upper",
+    "CI99_lower","CI99_upper")
+)
+
+th_x2 <- list(fit_type="uniform",
+             fit=c(0,23))
+set.seed(2021)
+expect_error(
+  ci_df2 <- calc_ci_ord(ord_model,th_x2),
+  NA
+)
+
+expect_equal(
+  ci_df2[2,4],
+  22.70
+)
+
+expect_equal(
+  ci_df2[3,1],
+  2
+)
+
+
+
+
+
+
+
+

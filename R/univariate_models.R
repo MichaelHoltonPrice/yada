@@ -857,3 +857,49 @@ get_approx_x_range_cont <- function(w,th_w,mod_spec) {
 
   return(c(xlo,xhi))
 }
+
+#' @title Calculate ordinal model confidence intervals
+#' 
+#' @description Wrapper function that takes an ordinal model and outputs the 
+#' point estimate and 95% and 99% confidence intervals for each ordinal stage.
+#' 
+#' @param ord_model List containing the parameter vector for y [th_y] and model
+#' specification [mod_spec] for an ordinal univariate model (likely the 
+#' output of `solve_ord_problem`)
+#' @param th_x Parameterization for prior on x
+#' 
+#' @export
+
+calc_ci_ord <- function(ord_model, th_x) {
+  # Initialize matrix (M+1 x 6)
+  ci_mat <- matrix(nrow=(ord_model$mod_spec$M+1), ncol=6)
+  
+  # Add cdep_spec to univariate mod_spec? 
+  ord_model$mod_spec$cdep_spec <- 'indep'
+  
+  # Run through each ordinal stage, calculating the posterior density, 
+  # point estimate, 95%, and 99% confidence intervals and populating ci_mat
+  for(n in 0:ord_model$mod_spec$M) {
+    x_post <- calc_x_posterior(y=n, th_x, ord_model$th_y, 
+                               ord_model$mod_spec)
+    if (x_post$x[1] != 0) {
+      x_post$x[1] <- 0
+    }
+    
+    x_analyze <- analyze_x_posterior(x_post$x, x_post$density)
+    
+    ci_mat[n+1,1] <- n  # ordinal stage
+    ci_mat[n+1,2] <- round(x_analyze$xmean, 2)  # point estimate
+    ci_mat[n+1,3] <- round(x_analyze$xlo, 2)  # lower 95
+    ci_mat[n+1,4] <- round(x_analyze$xhi, 2)  # upper 95
+    ci_mat[n+1,5] <- round(x_analyze$xlolo, 2) # lower 99
+    ci_mat[n+1,6] <- round(x_analyze$xhihi, 2) # upper 99
+  }
+  
+  # Format ci_mat as final data frame
+  ci_df <- as.data.frame(ci_mat)
+  colnames(ci_df) <- c("ord_stage", "point_est", "CI95_lower",
+                       "CI95_upper", "CI99_lower", "CI99_upper")
+  
+  return(ci_df)
+}

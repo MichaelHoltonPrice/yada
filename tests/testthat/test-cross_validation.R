@@ -553,6 +553,29 @@ expect_equal(
   )
 )
 
+# Test generate_ord_ci
+library(doParallel)
+registerDoParallel(detectCores()-4)
+
+th_x <- list(fit_type="uniform",
+             fit=c(0,80))
+
+set.seed(2021)
+expect_error(
+  ord_ci <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x),
+  NA
+)
+
+expect_equal(
+  dim(ord_ci),
+  c(7,6)
+)
+
+expect_equal(
+  ord_ci[3,5],
+  4.55
+)
+
 # Test build_cindep_model
 mod_spec <- generate_mod_spec(problem, params, "dep")
 th_y <- params$param_val[c(8:10, 1:6, 7, 11:12)]
@@ -574,7 +597,7 @@ expect_equal(
   )
 )
 
-expect_false(s
+expect_false(
   file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
 )
 
