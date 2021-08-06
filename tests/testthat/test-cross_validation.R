@@ -607,10 +607,6 @@ expect_error(
   NA
 )
 
-expect_equal(
-  
-)
-
 expect_true(
   file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
 )
