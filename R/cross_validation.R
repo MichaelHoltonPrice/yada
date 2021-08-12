@@ -1501,16 +1501,19 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                th_v_bar,
                                input_list=input_list)
         
-        # se <- sqrt(diag(solve(H)))
-        se <- tryCatch (
-          {sqrt(diag(solve(H)))},
-          error=function(cond) {
-            return(rep(NA,times=length(diag(H))))
-          },
-          warning=function(cond) {
-            return(rep(NA,times=length(diag(H))))
-          }
-        )
+        se <- suppressWarnings(sqrt(diag(solve(H))))
+        # se <- tryCatch (
+        #   {sqrt(diag(solve(H)))},
+        #   error=function(cond) {
+        #     return(rep(NA,times=length(diag(H))))
+        #   },
+        #   warning=function(cond) {
+        #     return(rep(NA,times=length(diag(H))))
+        #   }
+        # )
+        if (all(is.nan(se))) {
+          se[is.nan(se)] <- NA
+        }
 
         a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
                                                              mod_spec_j,
@@ -1576,16 +1579,16 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
         H <- numDeriv::hessian(cont_dummy,
                                th_w_bar,
                                input_list=input_list)
-        # se <- sqrt(diag(solve(H)))
-        se <- tryCatch (
-          {sqrt(diag(solve(H)))},
-          error=function(cond) {
-            return(rep(NA,times=length(diag(H))))
-          },
-          warning=function(cond) {
-            return(rep(NA,times=length(diag(H))))
-          }
-        )
+        se <- suppressWarnings(sqrt(diag(solve(H))))
+        # se <- tryCatch (
+        #   {sqrt(diag(solve(H)))},
+        #   error=function(cond) {
+        #     return(sqrt(diag(solve(H))))
+        #   },
+        #   warning=function(cond) {
+        #     return(sqrt(diag(solve(H))))
+        #   }
+        # )
         a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
                                                              mod_spec_k,
                                                              k=1)])

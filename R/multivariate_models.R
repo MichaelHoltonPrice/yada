@@ -775,8 +775,9 @@ remove_missing_variables <- function(y0,mod_spec0) {
 
   J0 <- get_J(mod_spec0)
   K0 <- get_K(mod_spec0)
-  keep <- !is.na(y0)
+  keep <- !is.na(y0)  # non-NA variables
 
+  # Find J and K for current individual
   if(J0 == 0) {
     J = 0
   } else if (J0 == 1 & sum(keep[1]) == 0) {
@@ -791,29 +792,24 @@ remove_missing_variables <- function(y0,mod_spec0) {
     K <- sum(keep[J0+(1:K0)])
   }
 
-  y <- y0[keep]
-  # mod_spec <- list(mean_spec=mod_spec0$mean_spec[keep])
-  # mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
-  # mod_spec$J <- J
-  # mod_spec$K <- K
-  # if(J > 0) {
-  #   mod_spec$M <- mod_spec0$M[keep[1:J0]]
-  # }
-  # mod_spec$cdep_spec <- mod_spec0$cdep_spec
-
-  if (J+K == 1) {
-    mod_spec <- mod_spec0
-    mod_spec$cdep_spec <- 'indep'
+  y <- y0[keep]  # keep only non-NA values
+  
+  # Initialize mod_spec
+  mod_spec <- mod_spec0
+  mod_spec$J <- J
+  mod_spec$K <- K
+  if (J > 0) {
+    mod_spec$M <- mod_spec0$M[keep[1:J0]]
   } else {
-    mod_spec <- list(mean_spec=mod_spec0$mean_spec[keep])
-    mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
-    mod_spec$J <- J
-    mod_spec$K <- K
-    if(J > 0) {
-      mod_spec$M <- mod_spec0$M[keep[1:J0]]
-    }
-    mod_spec$cdep_spec <- mod_spec0$cdep_spec
+    mod_spec$M <- NULL
   }
+  mod_spec$mean_spec <- mod_spec0$mean_spec[keep]
+  mod_spec$noise_spec <- mod_spec0$noise_spec[keep]
+  if (J+K == 1) {
+    mod_spec$cdep_spec <- 'indep'
+    mod_spec$cdep_groups <- NULL
+  }
+
   
   if(mod_spec$cdep_spec == 'dep') {
     groups0         <- mod_spec0$cdep_groups
@@ -1565,7 +1561,7 @@ fit_multivariate <- function(x,Y,mod_spec,
 
   if (!is.na(save_file)) {
     if (file.exists(save_file)) {
-      stop("save_file already exists")
+      print("save_file already exists, starting optimization from previous run")
     }
   }
 

@@ -560,7 +560,7 @@ registerDoParallel(detectCores()-4)
 th_x <- list(fit_type="uniform",
              fit=c(0,80))
 
-set.seed(2021)
+# set.seed(2021)
 expect_error(
   ord_ci <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x),
   NA
@@ -577,7 +577,7 @@ expect_equal(
 )
 
 # Check functioning of the seed
-set.seed(2021)
+# set.seed(2021)
 expect_error(
   ord_ci_a <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
                               input_seed=12),
@@ -643,26 +643,25 @@ success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds")
 
 expect_error(
   cindep_model_main <- build_cindep_model(data_dir, analysis_name,
-                                          save_file=T),
+                                          calc_se=T, save_file=T),
   NA
 )
 
 expect_error(
   cindep_model_fold1 <- build_cindep_model(data_dir, analysis_name, 
-                                           fold=1, save_file=T),
+                                           fold=1, calc_se=T, save_file=T),
   NA
 )
 
 expect_error(
   cindep_model_fold2 <- build_cindep_model(data_dir, analysis_name, 
-                                           fold=2, save_file=T),
+                                           fold=2, calc_se=T, save_file=T),
   NA
 )
 
-# TODO: Check build_cindep_model when calc_se is TRUE. It cannot be checked
-# with the preceding inputs since the resulting Hessian is singular.
+# Test crossval_multivariate_models -- Hessian problem not fixed?
 
-# Test crossval_multivariate_models?? -- needs calc_se=TRUE to work...
+
 
 
 
