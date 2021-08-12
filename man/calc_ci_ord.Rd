@@ -4,7 +4,7 @@
 \alias{calc_ci_ord}
 \title{Calculate ordinal model confidence intervals}
 \usage{
-calc_ci_ord(ord_model, th_x)
+calc_ci_ord(ord_model, th_x, input_seed = NA)
 }
 \arguments{
 \item{ord_model}{List containing the parameter vector for y [th_y] and model
@@ -12,8 +12,20 @@ specification [mod_spec] for an ordinal univariate model (likely the
 output of `solve_ord_problem`)}
 
 \item{th_x}{Parameterization for prior on x}
+
+\item{input_seed}{An optional seed that can be used to make results
+reproducible. The input_seed must be either (1) NA / not provided (the
+default), (2) a single integer, or (3) a vector with length M+1 (see
+Description for further details).}
 }
 \description{
 Wrapper function that takes an ordinal model and outputs the 
 point estimate and 95% and 99% confidence intervals for each ordinal stage.
+To allow reproducibility, an optional random number input seed seed can be
+provided. The input seed should either be (1) NA [the default], (2) a single
+integer, or (3) a vector of length M+1, where M is the number of ordinal
+categories. If no seed is provided, one is drawn and treated as if it (a
+single integer) was input. If a single integer is provided, it is used to
+generate a vector of integers with  length M+1. The vector is used to
+provide seeds for initializing the seed for each call to calc_x_posterior.
 }

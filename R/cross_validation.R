@@ -1368,21 +1368,24 @@ load_best_univariate_model <- function(data_dir,
 #' @param analysis_name Unique identifier for current analysis
 #' @param var_name Response variable name
 #' @param th_x Parameterization for prior on x
+#' @param input_seed An optional seed that can be used to make results
+#'   reproducible. The input_seed must be either (1) NA / not provided (the
+#'   default), (2) a single integer, or (3) a vector with length M+1 (see
+#'   Description of calc_ci_ord for further details).
 #' @param save_file Logical whether the resulting data frame should be saved
 #' as an .rds file
 #'
 #' @export
+generate_ord_ci <- function(data_dir, analysis_name, var_name,
+                            th_x, input_seed=NA, save_file=F) {
 
-generate_ord_ci <- function(data_dir, analysis_name, var_name, 
-                            th_x, save_file=F) {
-  
   # Load the best ordinal model
   ord_model <- load_best_univariate_model(data_dir, analysis_name,
                                           var_name)
-  
+
   # Calculate the confidence intervals and point estimate
-  ci_df <- calc_ci_ord(ord_model, th_x)
-  
+  ci_df <- calc_ci_ord(ord_model, th_x, input_seed=input_seed)
+
   if(save_file) {
     saveRDS(ci_df, build_file_path(data_dir,
                                    analysis_name,
@@ -1724,11 +1727,17 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
   
   calc_data_cindep <- prep_for_neg_log_lik_multivariate(problem$x,
                                                         problem$Y,
-                                                        mod_spec_cindep)
+                                                        mod_spec_cindep,
+                                                        remove_log_ord=TRUE)
   calc_data_cdep   <- prep_for_neg_log_lik_multivariate(problem$x,
                                                         problem$Y,
-                                                        mod_spec_cdep)
-  
+                                                        mod_spec_cdep,
+                                                        remove_log_ord=TRUE)
+
+  # TODO: consider setting remove_log_ord=FALSE in the preceding step but
+  #       requiring all entries to be non-null since the log_ord cases should
+  #       already have been handled when creating the cross-validation training
+  #       and test folds.
   eta_vect_cindep <- calc_neg_log_lik_vect_multivariate(th_y_cindep,
                                                         calc_data_cindep)
   eta_vect_cdep   <- calc_neg_log_lik_vect_multivariate(th_y_cdep,

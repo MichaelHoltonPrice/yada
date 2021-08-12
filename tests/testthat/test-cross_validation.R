@@ -576,6 +576,24 @@ expect_equal(
   4.55
 )
 
+# Check functioning of the seed
+set.seed(2021)
+expect_error(
+  ord_ci_a <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
+                              input_seed=12),
+  NA
+)
+expect_error(
+  ord_ci_b <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
+                              input_seed=12),
+  NA
+)
+
+expect_equal(
+  ord_ci_a,
+  ord_ci_b
+)
+
 # Test build_cindep_model
 mod_spec <- generate_mod_spec(problem, params, "dep")
 th_y <- params$param_val[c(8:10, 1:6, 7, 11:12)]

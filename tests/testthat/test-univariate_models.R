@@ -921,20 +921,9 @@ ord_model <- list(th_y=c(b_pow_law_ord,tau1,tau2,beta_const),
 th_x <- list(fit_type="uniform",
              fit=c(0,80))
 
-set.seed(2021)
 expect_error(
   ci_df <- calc_ci_ord(ord_model,th_x),
   NA
-)
-
-expect_equal(
-  ci_df[3,2],
-  60.00
-)
-
-expect_equal(
-  ci_df[2,3],
-  8.07
 )
 
 expect_equal(
@@ -943,28 +932,71 @@ expect_equal(
     "CI99_lower","CI99_upper")
 )
 
-th_x2 <- list(fit_type="uniform",
-             fit=c(0,23))
-set.seed(2021)
+# TODO: consider intializing xcalc directly in calc_ci_ord with more samples
+#       than the default in calc_x_posterior.
 expect_error(
-  ci_df2 <- calc_ci_ord(ord_model,th_x2),
+  ci_df_a <- calc_ci_ord(ord_model,th_x, input_seed=11),
+  NA
+)
+
+expect_error(
+  ci_df_b <- calc_ci_ord(ord_model,th_x, input_seed=11),
   NA
 )
 
 expect_equal(
-  ci_df2[2,4],
-  22.70
+  ci_df_a,
+  ci_df_b
+)
+
+set.seed(11)
+seed_vect <- sample.int(1000000,ord_model$mod_spec$M+1)
+expect_error(
+  ci_df_c <- calc_ci_ord(ord_model,th_x, input_seed=seed_vect),
+  NA
 )
 
 expect_equal(
-  ci_df2[3,1],
-  2
+  ci_df_a,
+  ci_df_c
 )
 
+th_x2 <- list(fit_type="uniform",
+             fit=c(0,23))
+expect_error(
+  ci_df <- calc_ci_ord(ord_model,th_x2),
+  NA
+)
 
+expect_equal(
+  colnames(ci_df),
+  c("ord_stage","point_est","CI95_lower","CI95_upper",
+    "CI99_lower","CI99_upper")
+)
 
+expect_error(
+  ci_df_a <- calc_ci_ord(ord_model,th_x2, input_seed=11),
+  NA
+)
 
+expect_error(
+  ci_df_b <- calc_ci_ord(ord_model,th_x2, input_seed=11),
+  NA
+)
 
+expect_equal(
+  ci_df_a,
+  ci_df_b
+)
 
+set.seed(11)
+seed_vect <- sample.int(1000000,ord_model$mod_spec$M+1)
+expect_error(
+  ci_df_c <- calc_ci_ord(ord_model,th_x2, input_seed=seed_vect),
+  NA
+)
 
-
+expect_equal(
+  ci_df_a,
+  ci_df_c
+)

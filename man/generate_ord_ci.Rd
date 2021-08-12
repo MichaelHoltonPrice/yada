@@ -5,7 +5,14 @@
 \title{Generate the confidence intervals for a given a cross-validated
 ordinal variable}
 \usage{
-generate_ord_ci(data_dir, analysis_name, var_name, th_x, save_file = F)
+generate_ord_ci(
+  data_dir,
+  analysis_name,
+  var_name,
+  th_x,
+  input_seed = NA,
+  save_file = F
+)
 }
 \arguments{
 \item{data_dir}{Directory where files are saved}
@@ -15,6 +22,11 @@ generate_ord_ci(data_dir, analysis_name, var_name, th_x, save_file = F)
 \item{var_name}{Response variable name}
 
 \item{th_x}{Parameterization for prior on x}
+
+\item{input_seed}{An optional seed that can be used to make results
+reproducible. The input_seed must be either (1) NA / not provided (the
+default), (2) a single integer, or (3) a vector with length M+1 (see
+Description of calc_ci_ord for further details).}
 
 \item{save_file}{Logical whether the resulting data frame should be saved
 as an .rds file}

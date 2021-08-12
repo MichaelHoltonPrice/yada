@@ -4,7 +4,7 @@
 \alias{prep_for_neg_log_lik_multivariate}
 \title{Prepare for the negative log-likelihood calculations}
 \usage{
-prep_for_neg_log_lik_multivariate(x, Y, mod_spec)
+prep_for_neg_log_lik_multivariate(x, Y, mod_spec, remove_log_ord = FALSE)
 }
 \arguments{
 \item{x}{The independent variable}
@@ -12,6 +12,12 @@ prep_for_neg_log_lik_multivariate(x, Y, mod_spec)
 \item{Y}{The matrix of responses}
 
 \item{mod_spec}{The model specification}
+
+\item{remove_log_ord_cases}{Whether or not to remove log_ord edge cases from
+the return list, calc_data. remove_log_ord_cases should be TRUE if
+calc_data is being used to calculate a likelihood function and should,
+typically, otherwise be FALSE (e.g., if log_ord is being used for
+posterior inference).}
 }
 \value{
 Data needed for a speedy negative log-likelihood calculation (calc_data)

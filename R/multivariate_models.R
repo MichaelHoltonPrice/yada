@@ -916,11 +916,19 @@ remove_missing_variables <- function(y0,mod_spec0) {
 #' @param x The independent variable
 #' @param Y The matrix of responses
 #' @param mod_spec The model specification
+#' @param remove_log_ord_cases Whether or not to remove log_ord edge cases from
+#'   the return list, calc_data. remove_log_ord_cases should be TRUE if
+#'   calc_data is being used to calculate a likelihood function and should,
+#'   typically, otherwise be FALSE (e.g., if log_ord is being used for
+#'   posterior inference).
 #'
 #' @return Data needed for a speedy negative log-likelihood calculation (calc_data)
 #'
 #' @export
-prep_for_neg_log_lik_multivariate <- function(x,Y,mod_spec) {
+prep_for_neg_log_lik_multivariate <- function(x,
+                                              Y,
+                                              mod_spec,
+                                              remove_log_ord=FALSE) {
   N <- length(x)
   if(N != ncol(Y)) {
     stop('length of x should equal the number of columns in Y')
@@ -939,6 +947,14 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,mod_spec) {
   if(any(colSums(is.na(Y)) == (J+K))) {
     stop('Y should not contain observations with all missing values')
   }
+
+  if(any(rowSums(is.na(Y)) == ncol(Y))) {
+    stop('Y should not contain variables with all missing values')
+  }
+
+  # Store the starting inputs
+  x0 <- x
+  Y0 <- Y
 
   # Handle special cases where the mean_spec is log_ord and x is 0
   ind_log <- which(mod_spec$mean_spec == 'log_ord')
@@ -963,25 +979,38 @@ prep_for_neg_log_lik_multivariate <- function(x,Y,mod_spec) {
   # Call remove_missing_variables to populate the following lists:
   calc_data <- list()
   for(n in 1:N) {
-  
-    # Remove missing variables
-    remap <- tryCatch({remove_missing_variables(Y[,n],mod_spec)},
-      warning=function(w) {
-        message(n)
-      })
-    
-    if (length(remap$y) == 0) {
-      next
+    if (all(is.na(Y[,n]))) {
+      calc_data[[n]] <- list(log_ord_edge_case=TRUE)
+    } else {
+      # Remove missing variables
+      remap <- tryCatch({remove_missing_variables(Y[,n],mod_spec)},
+        warning=function(w) {
+          message(n)
+        })
+
+      if (length(remap$y) == 0) {
+        stop("This should not happen")
+        next
+      }
+      calc_data_n <- list(x=x[n],y=remap$y,mod_spec=remap$mod_spec,
+                         mapping=remap$mapping,mapping0=remap$mapping0,
+                         ind=remap$ind,keep=remap$keep,log_ord_edge_case=FALSE)
+      calc_data[[n]] <- calc_data_n
     }
-    calc_data_n <- list(x=x[n],y=remap$y,mod_spec=remap$mod_spec,
-                       mapping=remap$mapping,mapping0=remap$mapping0,
-                       ind=remap$ind,keep=remap$keep)
-    calc_data[[n]] <- calc_data_n
-    
   }
 
-  calc_data <- calc_data[lengths(calc_data)!=0]  # remove null objects
-  
+  # If necessary, remove log_ord edge cases
+  if (remove_log_ord) {
+    # remove_log_ord should be TRUE if these data are being used for a maximum
+    # likelihood calculation. Otherwise (e.g., if they are being used for
+    # posterior inference), keep the NULL objects, which correspond to
+    # log_ord special cases.
+    ind_to_keep <- unlist(lapply(calc_data,
+                                 function(calc_data_n){
+                                   !calc_data_n$log_ord_edge_case}))
+    calc_data <- calc_data[ind_to_keep]
+  }
+
   return(calc_data)
 }
 
@@ -1062,6 +1091,14 @@ calc_neg_log_lik_vect_multivariate <- function(th_y,calc_data,tf_cat_vect=NA) {
 #'
 #' @export
 calc_neg_log_lik_scalar_multivariate <- function(th_y,calc_data_n) {
+  # If calc_data_n$log_ord_edge_case is TRUE, this is a log_ord edge case,
+  # for which the likelihood is 1 and the negative log-likelihod is zero. It is
+  # incumbent on functions that call these functions to "know" this and, if
+  # necessary, handle it appropriately.
+  if (calc_data_n$log_ord_edge_case)  {
+    return(0)
+  }
+
   prep_data_n <- calc_cond_gauss_int_inputs(th_y[calc_data_n$ind],
                                             calc_data_n$x,
                                             calc_data_n$y,
@@ -1535,7 +1572,8 @@ fit_multivariate <- function(x,Y,mod_spec,
   # Create (a) the calculation data that supports rapid calculation of the
   # negative log-likelihood (calc_data) and (b) the transform category vector
   # so that the optimization can be unconstrained (tf_cat_vect).
-  calc_data = prep_for_neg_log_lik_multivariate(x,Y,mod_spec)
+  calc_data = prep_for_neg_log_lik_multivariate(x,Y,
+                                                mod_spec,remove_log_ord=TRUE)
   tf_cat_vect = get_multivariate_transform_categories(mod_spec)
 
   # Extract initialization variables from cindep_model
@@ -1581,6 +1619,8 @@ fit_multivariate <- function(x,Y,mod_spec,
 #' @param th_x Parameterization for prior on x
 #' @param th_y Parameterization for likelihood
 #' @param mod_spec The model specification
+#' @param seed An optional input seed to make sampling reproducibile
+#'   (default: NA, not used)
 #'
 #' @return A vector of posterior probabilities
 #'
@@ -1591,8 +1631,12 @@ sample_x_posterior <- function(y,
                                mod_spec,
                                num_samp,
                                thinning=1,
-                               prop_rescale=.1) {
+                               prop_rescale=.1,
+                               seed=NA) {
 
+  if (!is.na(seed)) {
+    set.seed(seed)
+  }
 
   # Get an approximate range for x using the individual variable fits.
   xmin_vect <- c()
@@ -1634,7 +1678,18 @@ sample_x_posterior <- function(y,
   }
 
   xlo <- median(xmin_vect)
+  if(xlo < 0) {
+    xlo <- 0
+  }
+
   xhi <- median(xmax_vect)
+  if(xhi <= xlo) {
+    if (xlo == 0) {
+      xhi <- 1
+    } else {
+      xhi <- 2*xhi
+    }
+  }
   x0 <- (xlo + xhi) / 2
   dx <- (xhi-xlo)*prop_rescale
 
@@ -1688,10 +1743,16 @@ sample_x_posterior <- function(y,
 #' @param mod_spec The model specification
 #' @param normalize Whether or not to normalize to integrate to 1 (default:
 #'   TRUE).
+#' @param seed An optional input seed to make sampling reproducibile
+#'   (default: NA, not used)
 #' @return A vector of posterior probabilities
 #' @export
-calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
+calc_x_posterior <- function(y,th_x,th_y,mod_spec,
+                             xcalc=c(),normalize=T,seed=NA) {
 
+  if ( (length(xcalc) > 0) && !is.na(seed) ) {
+    stop("A seed should not be provided if xcalc is provided")
+  }
   # If xcalc is not provided, determine it adaptively
   if (length(xcalc) == 0) {
     # Sample 1000 times. Sensible sampling parameters are determined adaptively
@@ -1701,7 +1762,8 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
                                   th_y,
                                   mod_spec,
                                   1000,
-                                  prop_rescale=1)
+                                  prop_rescale=1,
+                                  seed=seed)
 
     # Pad by 25% on either side
     xmin <- min(x_samp)
@@ -1712,11 +1774,7 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
 
     # Ensure that xmin is not negative
     if (xmin < 0) {
-      if (mod_spec$mean_spec == "log_ord") {  # if log_ord, x cannot be 0
-        xmin <- 0.0001
-      } else {
-        xmin <- 0
-      }
+      xmin <- 0
     }
 
     # Use 1000 samples for xcalc on the range xmin to xmax
@@ -1725,7 +1783,28 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
     x_samp <- c()
   }
 
-  p_xy <- calc_joint(xcalc,y,th_x,th_y,mod_spec)
+  # Handle the possibility that x=0 and m>0 with a log_ord mean_spec by
+  # removing the first observation from xcalc if it is zero.
+  fix_x <- FALSE
+  J <- get_J(mod_spec)
+  if (J > 0) {
+    for (j in 1:J) {
+      if (mod_spec$mean_spec[j] == "log_ord") {
+        if (xcalc[1] == 0) {
+          if (y[j] > 0) {
+            fix_x <- TRUE
+          }
+        }
+      }
+    }
+  }
+
+  if(fix_x) {
+    p_xy <- calc_joint(xcalc[-1],y,th_x,th_y,mod_spec)
+    p_xy <- c(0,p_xy)
+  } else {
+    p_xy <- calc_joint(xcalc,y,th_x,th_y,mod_spec)
+  }
 
   # xcalc must be evenly spaced for normalization
   # TODO: add support for trapezoidal integration
@@ -1758,18 +1837,32 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,xcalc=c(),normalize=T) {
 #'
 #' @export
 calc_joint <- function(xcalc,y,th_x,th_y,mod_spec) {
+  xcalc0 <- xcalc
+  ind_fix <- rep(FALSE, length(xcalc0))
+  J <- get_J(mod_spec)
+  if (J > 0) {
+    for (j in 1:J) {
+      if (mod_spec$mean_spec[j] == "log_ord") {
+        if (y[j] > 0) {
+          ind_fix[which(xcalc == 0)] <- TRUE
+        }
+      }
+    }
+  }
+
+  xcalc <- xcalc0[!ind_fix]
   Y <- matrix(y,nrow=length(y),ncol=length(xcalc))
+
+  # Since calc_data is being used for posterior inference, do not use
+  # remove_log_ord=TRUE (the default is FALSE)
   calc_data <- prep_for_neg_log_lik_multivariate(xcalc,Y,mod_spec)
   # the vector of log-likelihoods
-  log_lik_vect <- -calc_neg_log_lik_vect_multivariate(th_y,calc_data)
+  log_lik_vect0 <- -calc_neg_log_lik_vect_multivariate(th_y,calc_data)
+  log_lik_vect <- rep(Inf, length(xcalc0))
+  log_lik_vect[!ind_fix] <- log_lik_vect0
 
   log_prior_vect <- log(calc_x_density(xcalc,th_x))
   
-  if (length(xcalc) != length(calc_data)) {
-    diff <- length(xcalc) - length(calc_data)
-    log_prior_vect <- log_prior_vect[-diff]
-  }
-
   log_joint_vect <- log_lik_vect + log_prior_vect
 
   fv <- exp(log_joint_vect)
@@ -1827,15 +1920,12 @@ calc_x_density <- function(x,th_x) {
 #'
 #' @export
 analyze_x_posterior <- function(xv,fv,xknown=NA) {
-  if(xv[1] != 0) {
-    stop('First element of xv should be zero')
-  }
-  # TODO: consider generalizing so that xv[1] does not have to be zero
-
+  # TODO: consider adding a check that xv is evenly spaced
   dx <- xv[2] - xv[1]
   # fv is the same as p_x
   fv <- fv / sum(fv) / dx
   Fv <- c(0,dx*cumsum(fv)[1:(length(xv)-1)])
+
 
   q <- 0.001
   n <- max(which(Fv <= q))

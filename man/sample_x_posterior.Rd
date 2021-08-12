@@ -11,7 +11,8 @@ sample_x_posterior(
   mod_spec,
   num_samp,
   thinning = 1,
-  prop_rescale = 0.1
+  prop_rescale = 0.1,
+  seed = NA
 )
 }
 \arguments{
@@ -22,6 +23,9 @@ sample_x_posterior(
 \item{th_y}{Parameterization for likelihood}
 
 \item{mod_spec}{The model specification}
+
+\item{seed}{An optional input seed to make sampling reproducibile
+(default: NA, not used)}
 
 \item{xcalc}{A vector of ages at which to calculate the posterior probability}
 }

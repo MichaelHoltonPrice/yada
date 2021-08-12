@@ -1706,21 +1706,28 @@ expect_equal(
   get_var_index_multivariate_mapping(mod_spec0)
 )
 
+# Check that an error is thrown if all observations in Y0 are NA for a
+# variable (the final row of the following input matrix is NA,NA).
+expect_error(
+  prep_for_neg_log_lik_multivariate(c(1,1),
+                                    cbind(y0_1,c(1,1,NA,9.5,NA,NA)),
+                                    mod_spec),
+  'Y should not contain variables with all missing values'
+)
+
 # Check functioning of log_ord
-y0_3 <- c(1,1,NA,9.5,NA,NA)
+y0_3 <- c(1,1,NA,9.5,NA,0)
 Y0 <- cbind(y0_1,y0_3)
 
 # Expect error if x is zero for first observation
 x <- c(3,0)
-
 expect_error(
   calc_data <- prep_for_neg_log_lik_multivariate(x,Y0,mod_spec),
   'For variable j=1, cases exist where mean_spec is log_ord, x=0, and m>0'
 )
 
-
 # It's OK if x is zero for log_ord if m is zero
-y0_4 <- c(0,1,NA,9.5,NA,NA)
+y0_4 <- c(0,1,NA,9.5,NA,0)
 Y0 <- cbind(y0_1,y0_4)
 
 expect_error(
@@ -1736,9 +1743,61 @@ expect_equal(
 for(n in 1:length(calc_data)) {
   expect_equal(
     names(calc_data[[n]]),
-    c("x","y","mod_spec","mapping","mapping0","ind","keep")
+    c("x","y","mod_spec","mapping","mapping0","ind","keep","log_ord_edge_case")
   )
 }
+
+# Check the behavior of remove_log_ord for a case where an observation should
+# be removed due to the log_ord edge case.
+Y0 <- cbind(c(1, 1, 0,10.5,11.5, 1),
+            c(0,NA,NA,  NA,  NA,NA))
+
+expect_error(
+  calc_data2 <- prep_for_neg_log_lik_multivariate(x,Y0,mod_spec),
+  NA
+)
+
+expect_equal(
+  length(calc_data2),
+  2
+)
+
+expect_equal(
+  names(calc_data2[[1]]),
+  c("x","y","mod_spec","mapping","mapping0","ind","keep","log_ord_edge_case")
+)
+expect_equal(
+  calc_data2[[1]]$log_ord_edge_case,
+  FALSE
+)
+expect_equal(
+  names(calc_data2[[2]]),
+  c("log_ord_edge_case")
+)
+expect_equal(
+  calc_data2[[2]]$log_ord_edge_case,
+  TRUE
+)
+
+expect_error(
+  calc_data2 <- prep_for_neg_log_lik_multivariate(x,Y0,
+                                                  mod_spec,
+                                                  remove_log_ord=TRUE),
+  NA
+)
+
+expect_equal(
+  length(calc_data2),
+  1
+)
+expect_equal(
+  names(calc_data2[[1]]),
+  c("x","y","mod_spec","mapping","mapping0","ind","keep","log_ord_edge_case")
+)
+expect_equal(
+  calc_data2[[1]]$log_ord_edge_case,
+  FALSE
+)
 
 # update y0_4 for the special case with log_ord, then call
 # remove_missing_variables directly (this is to check calc_data)
@@ -3814,6 +3873,7 @@ expect_error(
   NA
 )
 
+
 expect_equal(
   length(x_samp),
   200/4
@@ -3822,6 +3882,23 @@ expect_equal(
 expect_equal(
   any(is.na(x_samp)),
   FALSE
+)
+
+expect_error(
+  x_samp_a <- sample_x_posterior(y,th_x,th_y_sim,mod_spec,200,
+                                 thinning=4,prop_rescale=0.15,seed=102),
+  NA
+)
+
+expect_error(
+  x_samp_b <- sample_x_posterior(y,th_x,th_y_sim,mod_spec,200,
+                                 thinning=4,prop_rescale=0.15,seed=102),
+  NA
+)
+
+expect_equal(
+  x_samp_a,
+  x_samp_b
 )
 
 # Check calc_x_posterior [additional tests to check different ways of calling
@@ -3876,6 +3953,25 @@ expect_equal(
   1000
 )
 
+expect_error(
+  x_post_obj <- calc_x_posterior(y,th_x,th_y_sim,mod_spec,xcalc=1:4, seed=103),
+  "A seed should not be provided if xcalc is provided"
+)
+
+expect_error(
+  x_post_obj_a <- calc_x_posterior(y,th_x,th_y_sim,mod_spec, seed=103),
+  NA
+)
+
+expect_error(
+  x_post_obj_b <- calc_x_posterior(y,th_x,th_y_sim,mod_spec, seed=103),
+  NA
+)
+
+expect_equal(
+  x_post_obj_a,
+  x_post_obj_b
+)
 
 # Check analyze_x_posterior
 dx <- 0.005

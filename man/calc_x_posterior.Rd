@@ -4,7 +4,15 @@
 \alias{calc_x_posterior}
 \title{Calculate the posterior density of x}
 \usage{
-calc_x_posterior(y, th_x, th_y, mod_spec, xcalc = c(), normalize = T)
+calc_x_posterior(
+  y,
+  th_x,
+  th_y,
+  mod_spec,
+  xcalc = c(),
+  normalize = T,
+  seed = NA
+)
 }
 \arguments{
 \item{y}{The response vector for a single observation}
@@ -19,6 +27,9 @@ calc_x_posterior(y, th_x, th_y, mod_spec, xcalc = c(), normalize = T)
 
 \item{normalize}{Whether or not to normalize to integrate to 1 (default:
 TRUE).}
+
+\item{seed}{An optional input seed to make sampling reproducibile
+(default: NA, not used)}
 }
 \value{
 A vector of posterior probabilities
