@@ -1432,21 +1432,22 @@ clear_temp_dir <- function() {
 #'   TRUE, the standard error for th_y_bar is added (th_y_bar_se).
 #'
 #' @export
+
 build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                save_file=F) {
   problem_file <- build_file_path(data_dir,
                                   analysis_name,
                                   "main_problem")
   problem <- readRDS(problem_file)
-  
+
   # model_params <- get_best_univariate_params(data_dir, analysis_name)
   # mod_spec <- generate_mod_spec(problem, model_params, cdep_spec='dep')
   # mod_spec$cdep_spec <- "indep"
   # J <- mod_spec$J
   # K <- mod_spec$K
-  
+
   mod_spec <- problem$mod_spec
-  
+
   J <- mod_spec$J
   K <- mod_spec$K
 
@@ -1455,15 +1456,20 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
   alpha <- c()
   mean_spec <- c()
   noise_spec <- c()
-  
+
 
   if (calc_se) {
-    a_scale   <- c()
-    tau_scale   <- c()
-    alpha_scale <- c()
+    a_scale_ord      <- c()
+    tau_scale_ord    <- c()
+    alpha_scale_ord  <- c()
+    a_scale_cont     <- c()
+    tau_scale_cont   <- c()
+    alpha_scale_cont <- c()
   }
 
   if (J > 0) {
+    # ind_fix tracks which variables, if any, have problems with the Hessian
+    ind_fix <- rep(NA,J)
     for (j in 1:J) {
       var_name <- problem$var_names[j]
       best_model <- load_best_univariate_model(data_dir,
@@ -1481,7 +1487,7 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                                           mod_spec_j)])
       mean_spec <- c(mean_spec, mod_spec_j$mean_spec)
       noise_spec <- c(noise_spec, mod_spec_j$noise_spec)
-      
+
       if (calc_se) {
         ord_dummy <- function(th_v_bar, input_list) {
           return(calc_neg_log_lik_ord(th_v_bar,
@@ -1500,51 +1506,77 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
         H <- numDeriv::hessian(ord_dummy,
                                th_v_bar,
                                input_list=input_list)
-        
-        se <- suppressWarnings(sqrt(diag(solve(H))))
-        # se <- tryCatch (
-        #   {sqrt(diag(solve(H)))},
-        #   error=function(cond) {
-        #     return(rep(NA,times=length(diag(H))))
-        #   },
-        #   warning=function(cond) {
-        #     return(rep(NA,times=length(diag(H))))
-        #   }
-        # )
-        if (all(is.nan(se))) {
-          se[is.nan(se)] <- NA
+        # If there are NA or NaN entries in H, there is some chance there was
+        # a problem with the solution. For now, however, just try to fix the
+        # scale rather than throwing an error.
+        if(any(is.na(H))) {
+          ind_fix[j] <- T
+        } else {
+          # Try to invert the matrix. If an error is encountered, add the
+          # variable to ind_fix
+          Hinv <- try(solve(H),silent=T)
+          # TODO: consider checking the exact type of error message at this step
+          #       to ensure that the error is because the matrix is singular.
+          ind_fix[j] <- "try-error" %in% class(Hinv)
+        }
+        if (ind_fix[j]) {
+          se <- rep(NA,length(th_v))
+        } else {
+          se <- sqrt(diag(Hinv))
+          if (any(se <= 0)) {
+            stop(paste0("Not all standard errors are positive. Univariate ",
+                        "solution may not be an optimum for j=",j," and
+                        var_name=",problem$var_names[j]))
+          }
         }
 
-        a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
-                                                             mod_spec_j,
-                                                             j=1)])
-        tau_scale <- c(tau_scale,se[get_var_index_multivariate("tau",
-                                                               mod_spec_j,
-                                                               j=1)])
-        alpha_scale <- c(alpha_scale,se[get_var_index_multivariate("alpha",
-                                                               mod_spec_j,
-                                                               j=1)])
+        a_scale_ord   <-
+           c(a_scale_ord,se[get_var_index_multivariate("a",
+                                                       mod_spec_j,
+                                                       j=1)])
+        tau_scale_ord <-
+           c(tau_scale_ord,se[get_var_index_multivariate("tau",
+                                                         mod_spec_j,
+                                                         j=1)])
+        alpha_scale_ord <-
+          c(alpha_scale_ord,se[get_var_index_multivariate("alpha",
+                                                          mod_spec_j,
+                                                          j=1)])
+      }
+    } # end for loop over j
+    if (calc_se) {
+      if (sum(ind_fix) == J) {
+        # If all J ordinal variables need fixing, throw an error
+        stop("Hessians are singular for all ordinal variables")
+      }
+
+      if (sum(ind_fix) > 0) {
+        if (all(is.na(a_scale_ord))) {
+          stop("Cannot fix a_scale_ord")
+        }
+        if (all(is.na(tau_scale_ord))) {
+          stop("Cannot fix tau_scale_ord")
+        }
+        if (all(is.na(alpha_scale_ord))) {
+          stop("Cannot fix alpha_scale_ord")
+        }
+        for (j in 1:J) {
+          if(ind_fix[j]) {
+            a_scale_ord[is.na(a_scale_ord)] <-
+              median(a_scale_ord[!is.na(a_scale_ord)])
+            tau_scale_ord[is.na(tau_scale_ord)] <-
+              median(tau_scale_ord[!is.na(tau_scale_ord)])
+            alpha_scale_ord[is.na(alpha_scale_ord)] <-
+              median(alpha_scale_ord[!is.na(alpha_scale_ord)])
+          }
+        }
       }
     }
-  }
-  
-  # if(calc_se) {
-  #   ## Replace NAs with median parameter values
-  #   if(any(is.na(a_scale))) {
-  #     na_idx <- which(is.na(a_scale))
-  #     a_scale[na_idx] <- median(a_scale, na.rm=TRUE)
-  #   }
-  #   if(any(is.na(tau_scale))) {
-  #     na_idx <- which(is.na(tau_scale))
-  #     tau_scale[na_idx] <- median(tau_scale, na.rm=TRUE)
-  #   }
-  #   if(any(is.na(alpha_scale))) {
-  #     na_idx <- which(is.na(alpha_scale))
-  #     alpha_scale[na_idx] <- median(alpha_scale, na.rm=TRUE)
-  #   }
-  # }
+  } # end J>0 block
 
   if (K > 0) {
+    # ind_fix tracks which variables, if any, have problems with the Hessian
+    ind_fix <- rep(NA,K)
     for (k in 1:K) {
       var_name <- problem$var_names[J+k]
       best_model <- load_best_univariate_model(data_dir,
@@ -1560,7 +1592,7 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                                           mod_spec_k)])
       mean_spec <- c(mean_spec, mod_spec_k$mean_spec)
       noise_spec <- c(noise_spec, mod_spec_k$noise_spec)
-      
+
       if (calc_se) {
         cont_dummy <- function(th_w_bar, input_list) {
           return(calc_neg_log_lik_cont(th_w_bar,
@@ -1579,55 +1611,86 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
         H <- numDeriv::hessian(cont_dummy,
                                th_w_bar,
                                input_list=input_list)
-        se <- suppressWarnings(sqrt(diag(solve(H))))
-        # se <- tryCatch (
-        #   {sqrt(diag(solve(H)))},
-        #   error=function(cond) {
-        #     return(sqrt(diag(solve(H))))
-        #   },
-        #   warning=function(cond) {
-        #     return(sqrt(diag(solve(H))))
-        #   }
-        # )
-        a_scale   <- c(a_scale,se[get_var_index_multivariate("a",
-                                                             mod_spec_k,
-                                                             k=1)])
-        alpha_scale <- c(alpha_scale,se[get_var_index_multivariate("alpha",
-                                                               mod_spec_k,
-                                                               k=1)])
+        # If there are NA or NaN entries in H, there is some chance there was
+        # a problem with the solution. For now, however, just try to fix the
+        # scale rather than throwing an error.
+        if(any(is.na(H))) {
+          ind_fix[k] <- T
+        } else {
+          # Try to invert the matrix. If an error is encountered, add the
+          # variable to ind_fix
+          Hinv <- try(solve(H),silent=T)
+          # TODO: consider checking the exact type of error message at this step
+          #       to ensure that the error is because the matrix is singular.
+          ind_fix[k] <- "try-error" %in% class(Hinv)
+        }
+        if (ind_fix[k]) {
+          se <- rep(NA,length(th_v))
+        } else {
+          se <- sqrt(diag(Hinv))
+          if (any(se <= 0)) {
+            stop(paste0("Not all standard errors are positive. Univariate ",
+                        "solution may not be an optimum for k=",k," and
+                        var_name=",problem$var_names[J+k]))
+          }
+        }
+
+        a_scale_cont <-
+           c(a_scale_cont,se[get_var_index_multivariate("a",
+                                                        mod_spec_k,
+                                                        k=1)])
+        alpha_scale_cont <-
+          c(alpha_scale_cont,se[get_var_index_multivariate("alpha",
+                                                           mod_spec_k,
+                                                           k=1)])
+      }
+    } # end for loop over k
+    if (calc_se) {
+      if (sum(ind_fix) == K) {
+        # If all K continuous variables need fixing, throw an error
+        stop("Hessians are singular for all continuous variables")
+      }
+
+      if (sum(ind_fix) > 0) {
+        if (all(is.na(a_scale_cont))) {
+          stop("Cannot fix a_scale_cont")
+        }
+        if (all(is.na(alpha_scale_cont))) {
+          stop("Cannot fix alpha_scale_cont")
+        }
+        for (k in 1:K) {
+          if(ind_fix[k]) {
+            a_scale_cont[is.na(a_scale_cont)] <-
+              median(a_scale_cont[!is.na(a_scale_cont)])
+            alpha_scale_cont[is.na(alpha_scale_cont)] <-
+              median(alpha_scale_cont[!is.na(alpha_scale_cont)])
+          }
+        }
       }
     }
-  }
-  
-  if(calc_se) {
-    if(any(is.na(a_scale))) {
-      na_idx <- which(is.na(a_scale))
-      a_scale[na_idx] <- median(a_scale, na.rm=TRUE)
-    }
-    if(any(is.na(alpha_scale))) {
-      na_idx <- which(is.na(alpha_scale))
-      alpha_scale[na_idx] <- median(alpha_scale, na.rm=TRUE)
-    }
-  }
+  } # end K>0 block
 
   mod_spec$mean_spec <- mean_spec
   mod_spec$noise_spec <- noise_spec
   mod_spec$cdep_spec <- "indep"
-  
+
   tf_cat_vect <- get_multivariate_transform_categories(mod_spec)
   th_y <- c(a,tau,alpha)
   th_y_bar <- param_constr_to_unconstr(th_y, tf_cat_vect)
   output <- list(th_y=th_y,mod_spec=mod_spec,th_y_bar=th_y_bar)
 
   if(calc_se) {
-    output$th_y_bar_se = c(a_scale, tau_scale, alpha_scale)
+    output$th_y_bar_se = c(a_scale_ord,
+                           a_scale_cont,
+                           tau_scale_ord,
+                           alpha_scale_ord,
+                           alpha_scale_cont)
   }
-  
-  
+
   if(save_file) {
     saveRDS(output, build_file_path(data_dir,analysis_name,"cindep_model",fold=fold))
   }
-  
+
   return(output)
 }
 
