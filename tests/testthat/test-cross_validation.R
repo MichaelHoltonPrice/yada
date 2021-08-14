@@ -620,17 +620,6 @@ expect_false(
 )
 
 expect_error(
-  cindep_model1 <- build_cindep_model(data_dir, analysis_name, 
-                                      calc_se=T, save_file=T),
-  NA
-)
-
-expect_true(
-  file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
-)
-success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis.rds"))
-
-expect_error(
   cindep_model2 <- build_cindep_model(data_dir, analysis_name, 
                                       fold=1, save_file=T),
   NA
@@ -641,29 +630,406 @@ expect_true(
 )
 success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds"))
 
+# Create and fit simulated data to test the functioning of the standard error
+# calculation for build_cindep_model. Do so with a full simulation of the
+# cross validation steps.
+# TODO: check that the same convention is used for th_x throught yada
+# TODO: consider making a stand-alone function for the Hessian calculation.
+analysis_name <- "hessian"
+th_x <- list(fit_type="uniform",xmin=0,xmax=2)
+
+# Check with one ordinal and one continuous variable where the mean responses
+# are lin_Ord and pow_law, respectively, and the noise models are const. Check
+# both the normal functioning and the failures for (a) a singular Hessian and
+# (b) negative values on the diagonal of the inverse Hessian.
+
+# Simulate the data
+N <- 100 # number of simulated observations
+th_v_sim <- c(0.5,1.5)
+mod_spec_j1 <- list(mean_spec = "lin_ord",
+                    noise_spec = "const",
+                    J = 1,
+                    M = 1)
+set.seed(400)
+sim_ord <- sim_univariate_ord(th_v_sim,mod_spec_j1,N,th_x)
+th_w_sim <- c(1,10,20,.5)
+mod_spec_k1  <- list(mean_spec = "pow_law",
+                    noise_spec = "const",
+                    K = 1)
+sim_cont <- sim_univariate_cont(th_w_sim,mod_spec_k1,th_x,x=sim_ord$x)
+# Write the problem file
+mod_spec <- list(mean_spec=c("lin_ord","pow_law"),
+                 noise_spec=c("const","const"),
+                 J=1,
+                 K=1,
+                 M=1)
+problem <- list(x=sim_ord$x,
+                Y=rbind(sim_ord$v,sim_cont$w),
+                var_names=c("ord1","cont1"),
+                mod_spec=mod_spec)
+saveRDS(problem, build_file_path(data_dir, analysis_name, "main_problem"))
+
+# Solve the problems
+ord_prob_list <- build_univariate_ord_problems(data_dir, analysis_name)
+ord_seeds <- 400 + 1:length(ord_prob_list)
+ord_success <- rep(F,length(ord_prob_list))
+for (i in 1:length(ord_prob_list)) {
+  ord_success[i] <- yada::solve_ord_problem(data_dir,
+                                            analysis_name,
+                                            ord_prob_list[[i]],
+                                            anneal_seed=ord_seeds[i])
+}
+
+# Modify the lin_pos_int solution to have a singular Hessian by making the
+# solution nearly an edge solution
+soln_const_file <- build_file_path(data_dir,
+                         analysis_name,
+                         "univariate_ord_soln",
+                         j=1,
+                         var_name="ord1",
+                         mean_spec="lin_ord",
+                         noise_spec="const")
+soln_const <- readRDS(soln_const_file)
+soln_lpi_file <- build_file_path(data_dir,
+                         analysis_name,
+                         "univariate_ord_soln",
+                         j=1,
+                         var_name="ord1",
+                         mean_spec="lin_ord",
+                         noise_spec="lin_pos_int")
+soln_lpi <- readRDS(soln_lpi_file)
+soln_lpi$th_y <- c(soln_const$th_y,.00000)
+saveRDS(soln_lpi,soln_lpi_file)
+
+cont_prob_list <- build_univariate_cont_problems(data_dir, analysis_name)
+cont_success <- rep(F,length(cont_prob_list))
+for (i in 1:length(cont_prob_list)) {
+  cont_success[i] <- yada::solve_cont_problem(data_dir,
+                                              analysis_name,
+                                              cont_prob_list[[i]])
+}
+
+# Modify the lin_pos_int solution to not be an optimum
+soln_lpi_file <- build_file_path(data_dir,
+                         analysis_name,
+                         "univariate_cont_soln",
+                         k=1,
+                         var_name="cont1",
+                         mean_spec="pow_law",
+                         noise_spec="lin_pos_int")
+soln_lpi <- readRDS(soln_lpi_file)
+soln_lpi$th_y <- c(.5,20,-10,.5,.001)
+saveRDS(soln_lpi,soln_lpi_file)
+
+# Define and write the (minimal) cross validation object (this will be modified
+# for various tests
+cv_data <- list()
+ord_models <- c("lin_ord_const","lin_ord_lin_pos_int")
+cv_data$mod_select_ord <- list()
+cv_data$mod_select_ord[[1]] <-
+  data.frame(model=ord_models,
+             model_rank=c(1,2))
+cv_data$ord_models <- ord_models
+cv_data$param_list_ord <- list()
+
+# Build param_list_ord (which is length 1 since J=1)
+prob0 <- problem
+j <- 1
+param_list_j <- list()
+for(n_mod in 1:length(ord_models)) {
+  k_m <- ord_models[n_mod] # the known model
+  # Load the solution.
+  parsed_model <- parse_joined_model(k_m)
+  soln0 <- readRDS(build_file_path(data_dir,
+                                   analysis_name,
+                                   "univariate_ord_soln",
+                                   j=j,
+                                   var_name=prob0$var_names[j],
+                                   mean_spec=parsed_model[1],
+                                   noise_spec=parsed_model[2]))
+  mod_spec_j <- soln0$mod_spec
+
+
+  num_b <- get_num_var_univariate_ord('b',mod_spec_j)
+  num_tau <- get_num_var_univariate_ord('tau',mod_spec_j)
+  num_beta <- get_num_var_univariate_ord('beta',mod_spec_j)
+  rows <- c()
+  if(num_b > 0) {
+    for(n in 1:num_b) {
+      rows <- c(rows,paste0('b',n))
+    }
+  }
+  for(n in 1:num_tau) {
+    rows <- c(rows,paste0('tau',n))
+  }
+  for(n in 1:num_beta) {
+    rows <- c(rows,paste0('beta',n))
+  }
+  param_mat <- matrix(soln0$th_y,ncol=1)
+  rownames(param_mat) <- rows
+  colnames(param_mat) <- "main"
+  param_list_j[[n_mod]] <- param_mat
+}
+cv_data$param_list_ord[[j]] <- param_list_j
+
+cont_models <- c("pow_law_const","pow_law_lin_pos_int")
+cv_data$mod_select_cont[[1]] <-
+  data.frame(model=cont_models,
+             model_rank=c(1,2))
+cv_data$cont_models <- cont_models
+cv_data$param_list_cont <- list()
+# Build param_list_cont (which is length 1 since K=1)
+prob0 <- problem
+k <- 1
+param_list_k <- list()
+for(n_mod in 1:length(cont_models)) {
+  k_m <- cont_models[n_mod] # the known model
+  # Load the solution.
+  parsed_model <- parse_joined_model(k_m)
+  soln0 <- readRDS(build_file_path(data_dir,
+                                   analysis_name,
+                                   "univariate_cont_soln",
+                                   k=k,
+                                   var_name=prob0$var_names[1+k],
+                                   mean_spec=parsed_model[1],
+                                   noise_spec=parsed_model[2]))
+  mod_spec_k <- soln0$mod_spec
+
+  num_c <- get_num_var_univariate_cont('c',mod_spec_k)
+  num_kappa <- get_num_var_univariate_cont('kappa',mod_spec_k)
+  rows <- c()
+  if(num_c > 0) {
+    for(n in 1:num_c) {
+      rows <- c(rows,paste0('c',n))
+    }
+  }
+  for(n in 1:num_kappa) {
+    rows <- c(rows,paste0('kappa',n))
+  }
+  param_mat <- matrix(soln0$th_y,ncol=1)
+  rownames(param_mat) <- rows
+  colnames(param_mat) <- "main"
+  param_list_k[[n_mod]] <- param_mat
+}
+cv_data$param_list_cont[[k]] <- param_list_k
+
+cv_data_file <- build_file_path(data_dir,analysis_name,"cv_data")
+saveRDS(cv_data, cv_data_file)
+
 expect_error(
-  cindep_model_main <- build_cindep_model(data_dir, analysis_name,
-                                          calc_se=T, save_file=T),
+  model <- build_cindep_model(data_dir,analysis_name,calc_se=T),
   NA
 )
 
+expect_equal(
+  names(model),
+  c("th_y","mod_spec","th_y_bar","th_y_bar_se")
+)
+
+expect_equal(
+  any(is.na(model$th_y_bar_se)),
+  FALSE
+)
+
+# Check singular Hessian error
+cv_data$mod_select_ord[[j]]$model_rank <- c(2,1)
+saveRDS(cv_data, cv_data_file)
 expect_error(
-  cindep_model_fold1 <- build_cindep_model(data_dir, analysis_name, 
-                                           fold=1, calc_se=T, save_file=T),
+  model <- build_cindep_model(data_dir,analysis_name,calc_se=T),
+  "Hessians are singular for all ordinal variables"
+)
+
+# Check negative values on the diagonal error
+cv_data$mod_select_ord[[j]]$model_rank <- c(1,2)
+cv_data$mod_select_cont[[k]]$model_rank <- c(2,1)
+saveRDS(cv_data, cv_data_file)
+expect_error(
+  model <- build_cindep_model(data_dir,analysis_name,calc_se=T),
+  paste0("Not all diagonal entries of inv(H) are positive. Univariate ",
+         "solution may be a corner solution or may may not be an optimum for ",
+         "k=1 and var_name=cont1"),
+  fixed=T
+)
+# Simulate data for which one ordinal variable is singular and another is not
+# to ensure that substitution for the standard errors works (use the same
+# parameter vector, th_v, and mod_spec, mod_spec_j1, but replace only one
+# solution).
+
+# Simulate the data
+set.seed(410)
+sim_ord2 <- sim_univariate_ord(th_v_sim,mod_spec_j1,th_x,x=sim_ord$x)
+mod_spec <- list(mean_spec=c("lin_ord","lin_ord","pow_law"),
+                 noise_spec=c("const","const","const"),
+                 J=2,
+                 K=1,
+                 M=c(1,1))
+problem <- list(x=sim_ord$x,
+                Y=rbind(sim_ord$v,sim_ord2$v,sim_cont$w),
+                var_names=c("ord1","ord2","cont1"),
+                mod_spec=mod_spec)
+saveRDS(problem, build_file_path(data_dir, analysis_name, "main_problem"))
+
+# Solve the problems
+ord_prob_list <- build_univariate_ord_problems(data_dir, analysis_name)
+ord_seeds <- 400 + 1:length(ord_prob_list)
+ord_success <- rep(F,length(ord_prob_list))
+for (i in 1:length(ord_prob_list)) {
+  ord_success[i] <- yada::solve_ord_problem(data_dir,
+                                            analysis_name,
+                                            ord_prob_list[[i]],
+                                            anneal_seed=ord_seeds[i])
+}
+
+# Modify the lin_pos_int solution to have a singular Hessian for j=1 by making
+# the solution nearly an edge solution
+soln_const_file <- build_file_path(data_dir,
+                         analysis_name,
+                         "univariate_ord_soln",
+                         j=1,
+                         var_name="ord1",
+                         mean_spec="lin_ord",
+                         noise_spec="const")
+soln_const <- readRDS(soln_const_file)
+soln_lpi_file <- build_file_path(data_dir,
+                         analysis_name,
+                         "univariate_ord_soln",
+                         j=1,
+                         var_name="ord1",
+                         mean_spec="lin_ord",
+                         noise_spec="lin_pos_int")
+soln_lpi <- readRDS(soln_lpi_file)
+soln_lpi$th_y <- c(soln_const$th_y,.00000)
+saveRDS(soln_lpi,soln_lpi_file)
+
+cont_prob_list <- build_univariate_cont_problems(data_dir, analysis_name)
+cont_success <- rep(F,length(cont_prob_list))
+for (i in 1:length(cont_prob_list)) {
+  cont_success[i] <- yada::solve_cont_problem(data_dir,
+                                              analysis_name,
+                                              cont_prob_list[[i]])
+}
+# Define and write the (minimal) cross validation object (this will be modified
+# for various tests
+cv_data <- list()
+ord_models <- c("lin_ord_const","lin_ord_lin_pos_int")
+cv_data$mod_select_ord <- list()
+cv_data$mod_select_ord[[1]] <-
+  data.frame(model=ord_models,
+             model_rank=c(2,1))
+cv_data$mod_select_ord[[2]] <-
+  data.frame(model=ord_models,
+             model_rank=c(1,2))
+cv_data$ord_models <- ord_models
+cv_data$param_list_ord <- list()
+
+# Build param_list_ord (which is length 1 since J=1)
+prob0 <- problem
+for (j in 1:2) {
+param_list_j <- list()
+for(n_mod in 1:length(ord_models)) {
+  k_m <- ord_models[n_mod] # the known model
+  # Load the solution.
+  parsed_model <- parse_joined_model(k_m)
+  soln0 <- readRDS(build_file_path(data_dir,
+                                   analysis_name,
+                                   "univariate_ord_soln",
+                                   j=j,
+                                   var_name=prob0$var_names[j],
+                                   mean_spec=parsed_model[1],
+                                   noise_spec=parsed_model[2]))
+  mod_spec_j <- soln0$mod_spec
+
+
+  num_b <- get_num_var_univariate_ord('b',mod_spec_j)
+  num_tau <- get_num_var_univariate_ord('tau',mod_spec_j)
+  num_beta <- get_num_var_univariate_ord('beta',mod_spec_j)
+  rows <- c()
+  if(num_b > 0) {
+    for(n in 1:num_b) {
+      rows <- c(rows,paste0('b',n))
+    }
+  }
+  for(n in 1:num_tau) {
+    rows <- c(rows,paste0('tau',n))
+  }
+  for(n in 1:num_beta) {
+    rows <- c(rows,paste0('beta',n))
+  }
+  param_mat <- matrix(soln0$th_y,ncol=1)
+  rownames(param_mat) <- rows
+  colnames(param_mat) <- "main"
+  param_list_j[[n_mod]] <- param_mat
+}
+cv_data$param_list_ord[[j]] <- param_list_j
+}
+
+cont_models <- c("pow_law_const","pow_law_lin_pos_int")
+cv_data$mod_select_cont[[1]] <-
+  data.frame(model=cont_models,
+             model_rank=c(1,2))
+cv_data$cont_models <- cont_models
+cv_data$param_list_cont <- list()
+# Build param_list_cont (which is length 1 since K=1)
+prob0 <- problem
+k <- 1
+param_list_k <- list()
+for(n_mod in 1:length(cont_models)) {
+  k_m <- cont_models[n_mod] # the known model
+  # Load the solution.
+  parsed_model <- parse_joined_model(k_m)
+  soln0 <- readRDS(build_file_path(data_dir,
+                                   analysis_name,
+                                   "univariate_cont_soln",
+                                   k=k,
+                                   var_name=prob0$var_names[2+k], #J=2
+                                   mean_spec=parsed_model[1],
+                                   noise_spec=parsed_model[2]))
+  mod_spec_k <- soln0$mod_spec
+
+  num_c <- get_num_var_univariate_cont('c',mod_spec_k)
+  num_kappa <- get_num_var_univariate_cont('kappa',mod_spec_k)
+  rows <- c()
+  if(num_c > 0) {
+    for(n in 1:num_c) {
+      rows <- c(rows,paste0('c',n))
+    }
+  }
+  for(n in 1:num_kappa) {
+    rows <- c(rows,paste0('kappa',n))
+  }
+  param_mat <- matrix(soln0$th_y,ncol=1)
+  rownames(param_mat) <- rows
+  colnames(param_mat) <- "main"
+  param_list_k[[n_mod]] <- param_mat
+}
+cv_data$param_list_cont[[k]] <- param_list_k
+
+cv_data_file <- build_file_path(data_dir,analysis_name,"cv_data")
+saveRDS(cv_data, cv_data_file)
+
+expect_error(
+  model <- build_cindep_model(data_dir,analysis_name,calc_se=T),
   NA
 )
 
-expect_error(
-  cindep_model_fold2 <- build_cindep_model(data_dir, analysis_name, 
-                                           fold=2, calc_se=T, save_file=T),
-  NA
+expect_equal(
+  names(model),
+  c("th_y","mod_spec","th_y_bar","th_y_bar_se")
 )
 
-# Test crossval_multivariate_models -- Hessian problem not fixed?
+expect_equal(
+  any(is.na(model$th_y_bar_se)),
+  FALSE
+)
 
+# tau scales should all be equal (indices 4 and 5)
+expect_equal(
+  unique(model$th_y_bar_se[4:5]),
+  model$th_y_bar_se[4]
+)
 
-
-
-
-
-
+# ordinal noise scales should all be equal (indices 6:8)
+expect_equal(
+  unique(model$th_y_bar_se[6:8]),
+  model$th_y_bar_se[6]
+)

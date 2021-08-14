@@ -278,19 +278,19 @@ crossval_univariate_models <- function(data_dir,
           # number of parameters for the mean
           num_b <- get_num_var_univariate_ord('b',mod_spec)
           if(num_b > 0) {
-            for(n in 1:num_b) {
-              rows <- c(rows,paste0('b',n))
+            for(n_b in 1:num_b) {
+              rows <- c(rows,paste0('b',n_b))
             }
           }
           # number of tau parameters
           num_tau <- get_num_var_univariate_ord('tau',mod_spec)
-          for(n in 1:num_tau) {
-            rows <- c(rows,paste0('tau',n))
+          for(n_tau in 1:num_tau) {
+            rows <- c(rows,paste0('tau',n_tau))
           }
           # number of parameters for the noise
           num_beta <- get_num_var_univariate_ord('beta',mod_spec)
-          for(n in 1:num_beta) {
-            rows <- c(rows,paste0('beta',n))
+          for(n_beta in 1:num_beta) {
+            rows <- c(rows,paste0('beta',n_beta))
           }
           rownames(param_mat) <- rows
           colnames(param_mat) <-
@@ -537,14 +537,14 @@ crossval_univariate_models <- function(data_dir,
           # number of parameters for the mean
           num_c <- get_num_var_univariate_cont('c',mod_spec)
           if(num_c > 0) {
-            for(n in 1:num_c) {
-              rows <- c(rows,paste0('c',n))
+            for(n_c in 1:num_c) {
+              rows <- c(rows,paste0('c',n_c))
             }
           }
           # number of parameters for the noise
           num_kappa <- get_num_var_univariate_cont('kappa',mod_spec)
-          for(n in 1:num_kappa) {
-            rows <- c(rows,paste0('kappa',n))
+          for(n_kappa in 1:num_kappa) {
+            rows <- c(rows,paste0('kappa',n_kappa))
           }
           rownames(param_mat) <- rows
           colnames(param_mat) <-
@@ -1439,13 +1439,6 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                   analysis_name,
                                   "main_problem")
   problem <- readRDS(problem_file)
-
-  # model_params <- get_best_univariate_params(data_dir, analysis_name)
-  # mod_spec <- generate_mod_spec(problem, model_params, cdep_spec='dep')
-  # mod_spec$cdep_spec <- "indep"
-  # J <- mod_spec$J
-  # K <- mod_spec$K
-
   mod_spec <- problem$mod_spec
 
   J <- mod_spec$J
@@ -1463,7 +1456,6 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
     tau_scale_ord    <- c()
     alpha_scale_ord  <- c()
     a_scale_cont     <- c()
-    tau_scale_cont   <- c()
     alpha_scale_cont <- c()
   }
 
@@ -1522,12 +1514,13 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
         if (ind_fix[j]) {
           se <- rep(NA,length(th_v))
         } else {
-          se <- sqrt(diag(Hinv))
-          if (any(se <= 0)) {
-            stop(paste0("Not all standard errors are positive. Univariate ",
-                        "solution may not be an optimum for j=",j," and
-                        var_name=",problem$var_names[j]))
+          if (any(diag(Hinv) <= 0)) {
+            stop(paste0("Not all diagonal entries of inv(H) are positive. ",
+                        "Univariate solution may be a corner solution or may ",
+                        "may not be an optimum for j=",j," and var_name=",
+                        problem$var_names[j]))
           }
+          se <- sqrt(diag(Hinv))
         }
 
         a_scale_ord   <-
@@ -1551,8 +1544,10 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
       }
 
       if (sum(ind_fix) > 0) {
-        if (all(is.na(a_scale_ord))) {
-          stop("Cannot fix a_scale_ord")
+        if (length(a_scale_ord) > 0) {
+          if (all(is.na(a_scale_ord))) {
+            stop("Cannot fix a_scale_ord")
+          }
         }
         if (all(is.na(tau_scale_ord))) {
           stop("Cannot fix tau_scale_ord")
@@ -1627,12 +1622,13 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
         if (ind_fix[k]) {
           se <- rep(NA,length(th_v))
         } else {
-          se <- sqrt(diag(Hinv))
-          if (any(se <= 0)) {
-            stop(paste0("Not all standard errors are positive. Univariate ",
-                        "solution may not be an optimum for k=",k," and
-                        var_name=",problem$var_names[J+k]))
+            if (any(diag(Hinv) <= 0)) {
+            stop(paste0("Not all diagonal entries of inv(H) are positive. ",
+                        "Univariate solution may be a corner solution or may ",
+                        "may not be an optimum for k=",k," and var_name=",
+                        problem$var_names[J+k]))
           }
+          se <- sqrt(diag(Hinv))
         }
 
         a_scale_cont <-
@@ -1708,14 +1704,6 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
 #' @export
 
 crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
-  # mcp_file_name <- paste0("results/mcp_optim_save_US_fold", fold, ".rds")
-  # mcp_soln <- readRDS(mcp_file_name)
-  # mod_spec_cdep <- mcp_soln$mod_spec
-  # th_y_cdep <- mcp_soln$th_y
-  # 
-  # mod_spec_cindep <- mod_spec_cdep
-  # mod_spec_cindep$cdep_groups <- NULL
-  # mod_spec_cindep$cdep_spec = "indep"
   cindep_soln <- readRDS(build_file_path(data_dir,
                                          analysis_name,
                                          "cindep_model",
@@ -1729,61 +1717,7 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
                                       fold=fold))
   mod_spec_cdep <- cdep_soln$mod_spec
   th_y_cdep <- cdep_soln$th_y
-  # 
-  # J <- mod_spec_cindep$J
-  # K <- mod_spec_cindep$K
-  # 
-  # a     <- c()
-  # tau   <- c()
-  # alpha <- c()
-  # problem0 <- readRDS(build_file_path(data_dir,
-  #                                     analysis_name,
-  #                                     "main_problem"))
-  # 
-  # if (J > 0) {
-  #   for (j in 1:J) {
-  #     var_name <- problem0$var_names[j]
-  #     file_path <- build_file_path(data_dir,
-  #                                  analysis_name,
-  #                                  "cindep_ord_soln",
-  #                                  j=j,
-  #                                  var_name=var_name,
-  #                                  mean_spec=mod_spec_cindep$mean_spec[j],
-  #                                  noise_spec=mod_spec_cindep$noise_spec[j],
-  #                                  fold=fold)
-  #     ord_soln <- readRDS(file_path)
-  #     mod_spec_j <- ord_soln$mod_spec
-  #     ind_a <- get_var_index_multivariate("a", mod_spec_j)
-  #     a <- c(a, ord_soln$theta_y_vect[ind_a])
-  #     ind_tau <- get_var_index_multivariate("tau", mod_spec_j)
-  #     tau <- c(tau, ord_soln$theta_y_vect[ind_tau])
-  #     ind_alpha <- get_var_index_multivariate("alpha", mod_spec_j)
-  #     alpha <- c(alpha, ord_soln$theta_y_vect[ind_alpha])
-  #   }
-  # }
-  # 
-  # if (K > 0) {
-  #   for (k in 1:K) {
-  #     var_name <- problem0$var_names[J+k]
-  #     
-  #     file_path <- build_file_path(data_dir,
-  #                                  analysis_name,
-  #                                  "cindep_cont_soln",
-  #                                  k=k,
-  #                                  var_name=var_name,
-  #                                  mean_spec=mod_spec_cindep$mean_spec[J+k],
-  #                                  noise_spec=mod_spec_cindep$noise_spec[J+k],
-  #                                  fold=fold)
-  #     cont_soln <- readRDS(file_path)
-  #     mod_spec_k <- cont_soln$mod_spec
-  #     ind_a <- get_var_index_multivariate("a", mod_spec_k)
-  #     a <- c(a, cont_soln$theta_y_vect[ind_a])
-  #     ind_alpha <- get_var_index_multivariate("alpha", mod_spec_k)
-  #     alpha <- c(alpha, cont_soln$theta_y_vect[ind_alpha])
-  #   }
-  # }
-  # th_y_cindep <- c(a, tau, alpha)
-  
+
   # Load test data
   file_path <- build_file_path(data_dir,
                                analysis_name,
@@ -1808,15 +1742,7 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
                                                         calc_data_cindep)
   eta_vect_cdep   <- calc_neg_log_lik_vect_multivariate(th_y_cdep,
                                                         calc_data_cdep)
-  
-  # return(list(th_y_cindep,
-  #             th_y_cdep=th_y_cdep,
-  #             mod_spec_cindep=mod_spec_cindep,
-  #             mod_spec_cdep=mod_spec_cdep,
-  #             problem=problem,
-  #             eta_vect_cindep=eta_vect_cindep,
-  #             eta_vect_cdep=eta_vect_cdep))
-  
+
   return(list(eta_vect_cindep=eta_vect_cindep,
               eta_vect_cdep=eta_vect_cdep))
 }

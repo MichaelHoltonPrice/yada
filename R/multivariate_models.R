@@ -1561,7 +1561,7 @@ fit_multivariate <- function(x,Y,mod_spec,
 
   if (!is.na(save_file)) {
     if (file.exists(save_file)) {
-      print("save_file already exists, starting optimization from previous run")
+      stop("save_file already exists")
     }
   }
 
