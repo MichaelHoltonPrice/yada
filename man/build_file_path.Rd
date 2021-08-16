@@ -52,9 +52,9 @@ This function returns the path to one of these files. Which one is
 specified by the variables [file_type] and fold. [file_type] is a string that
 must be one of: 'main_problem', 'test_problem', 'training_problem',
 'univariate_ord_soln', 'univariate_cont_soln', 'solutionx', 'cv_data', 
-'mcp_inputs', 'cindep_model', 'hjk_progress', and 'cdep_model'. If 
+'mcp_inputs', 'cindep_model', 'hjk_progress', and 'mcp_model'. If
 [file_type] is test_problem' or training_problem', a valid fold number 
 is required as input. If [file_type] is univariate_ord_soln', 
 'univariate_cont_soln', 'solutionx', mcp_inputs', 
-'hjk_progress', or 'cdep_model, a fold number may be input.
+'hjk_progress', or 'mcp_model, a fold number may be input.
 }

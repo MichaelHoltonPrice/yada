@@ -1713,7 +1713,7 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
   
   cdep_soln <- readRDS(build_file_path(data_dir,
                                       analysis_name,
-                                      "cdep_model",
+                                      "mcp_model",
                                       fold=fold))
   mod_spec_cdep <- cdep_soln$mod_spec
   th_y_cdep <- cdep_soln$th_y

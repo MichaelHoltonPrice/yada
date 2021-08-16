@@ -1115,11 +1115,11 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
 #' specified by the variables [file_type] and fold. [file_type] is a string that
 #' must be one of: 'main_problem', 'test_problem', 'training_problem',
 #' 'univariate_ord_soln', 'univariate_cont_soln', 'solutionx', 'cv_data', 
-#' 'mcp_inputs', 'cindep_model', 'hjk_progress', and 'cdep_model'. If 
+#' 'mcp_inputs', 'cindep_model', 'hjk_progress', and 'mcp_model'. If
 #' [file_type] is test_problem' or training_problem', a valid fold number 
 #' is required as input. If [file_type] is univariate_ord_soln', 
 #' 'univariate_cont_soln', 'solutionx', mcp_inputs', 
-#' 'hjk_progress', or 'cdep_model, a fold number may be input.
+#' 'hjk_progress', or 'mcp_model, a fold number may be input.
 #'
 #' @param data_dir The data directory with problems and results
 #' @param analysis_name A unique analysis name (for the input data directory)'
@@ -1191,8 +1191,9 @@ build_file_path <- function(data_dir,analysis_name,file_type,
       file_name <- paste0(file_name,"_fold",fold)
     }
     file_name <- paste0(file_name,".rds")
-  } else if (file_type == "cdep_model") {
-    file_name <- paste0("cdep_model_",analysis_name)
+  } else if (file_type == "mcp_model") {
+    # TODO: consider adding an optional model ID
+    file_name <- paste0("mcp_model_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
