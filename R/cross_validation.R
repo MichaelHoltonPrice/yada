@@ -1704,6 +1704,8 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
 #' @export
 
 crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
+  # TODO: consider renaming this function to something like
+  #       calc_out_of_sample_neg_log_liks
   cindep_soln <- readRDS(build_file_path(data_dir,
                                          analysis_name,
                                          "cindep_model",
@@ -1716,7 +1718,7 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
                                       "mcp_model",
                                       fold=fold))
   mod_spec_cdep <- cdep_soln$mod_spec
-  th_y_cdep <- cdep_soln$th_y
+  th_y_cdep <- cdep_soln$mcp_fit$th_y
 
   # Load test data
   file_path <- build_file_path(data_dir,
