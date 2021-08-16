@@ -1191,9 +1191,9 @@ build_file_path <- function(data_dir,analysis_name,file_type,
       file_name <- paste0(file_name,"_fold",fold)
     }
     file_name <- paste0(file_name,".rds")
-  } else if (file_type == "mcp_model") {
+  } else if (file_type == "cdep_model") {
     # TODO: consider adding an optional model ID
-    file_name <- paste0("mcp_model_",analysis_name)
+    file_name <- paste0("cdep_model_",analysis_name)
     if (!is.na(fold)) {
       file_name <- paste0(file_name,"_fold",fold)
     }
