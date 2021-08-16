@@ -4,7 +4,13 @@
 \alias{prep_for_neg_log_lik_multivariate}
 \title{Prepare for the negative log-likelihood calculations}
 \usage{
-prep_for_neg_log_lik_multivariate(x, Y, mod_spec, remove_log_ord = FALSE)
+prep_for_neg_log_lik_multivariate(
+  x,
+  Y,
+  mod_spec,
+  remove_log_ord = FALSE,
+  no_missing_var = TRUE
+)
 }
 \arguments{
 \item{x}{The independent variable}
@@ -12,6 +18,9 @@ prep_for_neg_log_lik_multivariate(x, Y, mod_spec, remove_log_ord = FALSE)
 \item{Y}{The matrix of responses}
 
 \item{mod_spec}{The model specification}
+
+\item{no_missing_var}{(Default: TRUE) Whether or not to require all
+variables to have no missing values.}
 
 \item{remove_log_ord_cases}{Whether or not to remove log_ord edge cases from
 the return list, calc_data. remove_log_ord_cases should be TRUE if

@@ -917,6 +917,8 @@ remove_missing_variables <- function(y0,mod_spec0) {
 #'   calc_data is being used to calculate a likelihood function and should,
 #'   typically, otherwise be FALSE (e.g., if log_ord is being used for
 #'   posterior inference).
+#' @param no_missing_var (Default: TRUE) Whether or not to require all
+#'   variables to have no missing values.
 #'
 #' @return Data needed for a speedy negative log-likelihood calculation (calc_data)
 #'
@@ -924,7 +926,8 @@ remove_missing_variables <- function(y0,mod_spec0) {
 prep_for_neg_log_lik_multivariate <- function(x,
                                               Y,
                                               mod_spec,
-                                              remove_log_ord=FALSE) {
+                                              remove_log_ord=FALSE,
+                                              no_missing_var=TRUE) {
   N <- length(x)
   if(N != ncol(Y)) {
     stop('length of x should equal the number of columns in Y')
@@ -944,8 +947,10 @@ prep_for_neg_log_lik_multivariate <- function(x,
     stop('Y should not contain observations with all missing values')
   }
 
-  if(any(rowSums(is.na(Y)) == ncol(Y))) {
-    stop('Y should not contain variables with all missing values')
+  if (no_missing_var) {
+    if(any(rowSums(is.na(Y)) == ncol(Y))) {
+      stop('Y should not contain variables with all missing values')
+    }
   }
 
   # Store the starting inputs
@@ -1630,6 +1635,8 @@ sample_x_posterior <- function(y,
                                prop_rescale=.1,
                                seed=NA) {
 
+  # TODO: here and elsewhere consider allowing observations with missing values
+  #       for the sampling and posterior inference (but throw a warning)
   if (!is.na(seed)) {
     set.seed(seed)
   }
