@@ -882,13 +882,13 @@ expect_equal(
 )
 
 expect_equal(
-  build_file_path(data_dir,analysis_name,"mcp_model"),
-  file.path(tempdir(),"mcp_model_US-analysis.rds")
+  build_file_path(data_dir,analysis_name,"cdep_model"),
+  file.path(tempdir(),"cdep_model_US-analysis.rds")
 )
 
 expect_equal(
-  build_file_path(data_dir,analysis_name,"mcp_model",fold=2),
-  file.path(tempdir(),"mcp_model_US-analysis_fold2.rds")
+  build_file_path(data_dir,analysis_name,"cdep_model",fold=2),
+  file.path(tempdir(),"cdep_model_US-analysis_fold2.rds")
 )
 
 # Test yada::build_univariate_ord_problems
