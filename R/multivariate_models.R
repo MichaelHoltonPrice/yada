@@ -1605,7 +1605,10 @@ fit_multivariate <- function(x,Y,mod_spec,
   th_y_bar <- th_y_bar0 + hjk_output$par * th_y_bar_scale
   th_y <- param_unconstr_to_constr(th_y_bar, tf_cat_vect)
   
-  return(list(th_y=th_y,th_y_bar=th_y_bar,hjk_output=hjk_output))
+  return(list(th_y=th_y,
+              th_y_bar=th_y_bar,
+              hjk_output=hjk_output,
+              mod_spec=mod_spec))
 }
 
 #' @title Sample from the posterior density of x
