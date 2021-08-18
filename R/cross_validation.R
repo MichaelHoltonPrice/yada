@@ -1,3 +1,174 @@
+#' @title A helper function to check whether the fits in TH_y fail for beta2
+#'
+#' @param TH_y TH_y is a matrix with dimensions num_param x (1+num_folds)
+#' @param beta2_max beta2 threshold
+#'
+#' @export
+fail_for_beta2 <- function(TH_y,beta2_max) {
+  beta2_vect <- TH_y[nrow(TH_y),]
+  return(any(beta2_vect > beta2_max))
+}
+
+#' @title
+#' A helper function to identify the number of training problems (folds)
+#'
+#' @description
+#' The training problem files begin with "train_analysis_name_fold". Count the
+#' number of such files.
+#'
+#' @param data_dir The data directory with problems and results
+#' @param analysis_name A unique analysis name (for the input data directory)
+#'
+#' @return Number of test problems (folds)
+#'
+#' @export
+get_num_training_problems <- function(data_dir,analysis_name) {
+  start_string <- paste0("train_",analysis_name,"_fold")
+  matches <- unlist(lapply(dir(data_dir),
+                           function(file_name){
+                             startsWith(file_name,start_string)}))
+  return(sum(matches))
+}
+
+#' @title A helper function to check the files in data_dir to get the cases (fit
+#' univariate models). Exactly one of j and k should be input.
+#'
+#' @param data_dir Directory where files are located
+#' @param analysis_name analysis_name for file-searching
+#' @param j Number of current ordinal variable
+#' @param k Number of current continuous variable
+#'
+#' @export
+get_univariate_variable_cases <- function(data_dir,analysis_name,j=NA,k=NA) {
+
+  if(length(j) != 1) {
+    stop('j should be NA or a scalar')
+  }
+
+  if(length(k) != 1) {
+    stop('k should be NA or a scalar')
+  }
+
+  if(!is.na(j) && !is.na(k)) {
+    stop('Only one of j and k should be input')
+  }
+
+  if(is.na(j) && is.na(k)) {
+    stop('At least one of j and k should be input')
+  }
+
+  files <- dir(data_dir)
+  # Subset to univariate fits for this analysis_name, which begin with
+  # 'solutiony_analysis_name'
+  files <- files[unlist(lapply(files,
+                               function(f){
+                                 startsWith(f,
+                                            paste0('solutiony_',
+                                                   analysis_name))
+                               }))]
+  # Subset to fits for this variable
+  if(!is.na(j)) {
+    # The pattern is 'ord_j_2_' for j=2.
+    files <- files[unlist(lapply(files,
+                                 function(f){
+                                   grepl(paste0('ord_j_',
+                                                j,
+                                                '_'),
+                                         f)
+                                 }))]
+  } else {
+    # The pattern is 'cont_k_2_' for k=2.
+    files <- files[unlist(lapply(files,
+                                 function(f){
+                                   grepl(paste0('cont_k_',
+                                                k,
+                                                '_'),
+                                         f)
+                                 }))]
+  }
+  # Remove the leading part of each file and the file extension ('.rds')
+  # Number of leading characters
+  num_leading <- nchar(paste0('solutiony_',analysis_name,'_'))
+  cases <- unlist(lapply(files,function(f){substr(f,num_leading+1,nchar(f))}))
+  cases <- unlist(lapply(cases,function(f){substr(f,1,nchar(f)-4)}))
+  return(cases)
+}
+
+#' @title
+#' A helper function to identify univariate fit in a folder and determine the
+#' number of folds for each fit.
+#'
+#' @param data_dir Directory where the files are located.
+#' @param analysis_name analysis_name for file-searching
+#' @param j number of current ordinal variable
+#' @param k number of current continuous variable
+#'
+#' @export
+get_num_folds <- function(data_dir,analysis_name,j=NA,k=NA) {
+  # Return the number of folds for one or more variables
+  # If neither j nor k are input, return the number of folds for all variables
+  # If j is input but not k, return the number for just j (and similarly for k)
+  # Both and j and k can be vectors
+  # get_num_folds(data_dir,analysis_name) is equivalent to
+  # get_num_folds(data_dir,analysis_name,j=1:J,k=1:K)
+
+  # Base cases	(a) j has length one and k is NA
+  #	            (b) k has length one and j is NA
+
+  have_base_case <- ( !all(is.na(j)) && length(j) == 1 && is.na(k) ) ||
+                  ( !all(is.na(k)) && length(k) == 1 && is.na(j) )
+
+  if(have_base_case) {
+    cases <- get_univariate_variable_cases(data_dir,analysis_name,j=j,k=k)
+
+    # Determine the number of folds. First, subset to the fold cases, which
+    # begin with, e.g., fold2_*' for the second fold
+    fold_cases <- cases[unlist(lapply(cases,function(f){startsWith(f,'fold')}))]
+
+    # Extract each fold number as an integer
+    fold_num_vect <- unlist(lapply(fold_cases,
+                                    function(f){as.numeric(
+                                      strsplit(substr(f,5,nchar(f)),'_')[[1]][1])
+                                    }))
+    num_folds <- max(fold_num_vect) # the number of folds
+    return(num_folds)
+  }
+
+  # This is not a base case
+
+  # Neither j nor k is input. Calculate for all variables
+  if(all(is.na(j)) && all(is.na(k))) {
+    prob0 <- readRDS(build_file_path(data_dir,analysis_name,"main_problem"))
+    J <- yada::get_J(prob0$mod_spec)
+    K <- yada::get_K(prob0$mod_spec)
+    if( (J == 0) && (K == 0) ) {
+      stop('Both J and K cannot be zero')
+    }
+
+    if(J > 0) {
+      j <- 1:J
+    }
+
+    if(K > 0) {
+      k <- 1:K
+    }
+  }
+
+  num_folds <- c()
+  if(!all(is.na(j))) {
+    for(jj in j) {
+       num_folds <- c(num_folds,get_num_folds(data_dir,analysis_name,j=jj))
+    }
+  }
+
+  if(!all(is.na(k))) {
+    for(kk in k) {
+       num_folds <- c(num_folds,get_num_folds(data_dir,analysis_name,k=kk))
+    }
+  }
+  return(num_folds)
+}
+
 #' @title Cross-validation of univariate models
 #' 
 #' @description
@@ -650,6 +821,24 @@ crossval_univariate_models <- function(data_dir,
   return(cv_data)
 }
 
+#' @title A helper function to write a matrix to an Rmd file
+#'
+#' @param mat Matrix to be written
+#' @param rm_file rMarkdown file name
+#'
+#' @export
+write_matrix <- function(mat,rm_file) {
+  # preserve the pre-formatted text (i.e., don't remove white space)
+  write('<pre>',file=rm_file,append=T)
+
+  lines <- gsub('_','-',capture.output(print(mat)))
+  # Write each line, adding two spaces since that makes new lines in rmarkdown
+  for(l in lines) {
+    write(paste0(l,'  '),file=rm_file,append=T)
+  }
+  write('</pre>',file=rm_file,append=T)
+}
+
 #' @title
 #' Make an Rmarkdown document in the results folder for an ordinal variable.
 #' 
@@ -663,7 +852,6 @@ crossval_univariate_models <- function(data_dir,
 #' @param line_width User-defined line widths. Default is NA
 #' 
 #' @export
-
 write_ordinal_report <- function(data_dir,analysis_name,j,line_width=NA) {
 
   # If necessary, set the line width to the input line_width, and store the
@@ -766,24 +954,6 @@ write_ordinal_report <- function(data_dir,analysis_name,j,line_width=NA) {
   }
 }
 
-#' @title A helper function to write a matrix to an Rmd file
-#' 
-#' @param mat Matrix to be written
-#' @param rm_file rMarkdown file name
-#' 
-#' @export
-write_matrix <- function(mat,rm_file) {
-  # preserve the pre-formatted text (i.e., don't remove white space)
-  write('<pre>',file=rm_file,append=T)
-
-  lines <- gsub('_','-',capture.output(print(mat)))
-  # Write each line, adding two spaces since that makes new lines in rmarkdown
-  for(l in lines) {
-    write(paste0(l,'  '),file=rm_file,append=T)
-  }
-  write('</pre>',file=rm_file,append=T)
-}
-
 #' @title
 #' Make an Rmarkdown document in the results folder for a continuous variable.
 #' 
@@ -873,178 +1043,6 @@ write_continuous_report <- function(data_dir,analysis_name,k,line_width=NA) {
   }
 }
 
-#' @title A helper function to check whether the fits in TH_y fail for beta2
-#' 
-#' @param TH_y TH_y is a matrix with dimensions num_param x (1+num_folds)
-#' @param beta2_max beta2 threshold
-#' 
-#' @export
-fail_for_beta2 <- function(TH_y,beta2_max) {
-  beta2_vect <- TH_y[nrow(TH_y),]
-  return(any(beta2_vect > beta2_max))
-}
-
-#' @title
-#' A helper function to identify the number of training problems (folds)
-#'
-#' @description
-#' The training problem files begin with "train_analysis_name_fold". Count the
-#' number of such files.
-#'
-#' @param data_dir The data directory with problems and results
-#' @param analysis_name A unique analysis name (for the input data directory)
-#'
-#' @return Number of test problems (folds)
-#'
-#' @export
-get_num_training_problems <- function(data_dir,analysis_name) {
-  start_string <- paste0("train_",analysis_name,"_fold")
-  matches <- unlist(lapply(dir(data_dir),
-                           function(file_name){
-                             startsWith(file_name,start_string)}))
-  return(sum(matches))
-}
-
-#' @title
-#' A helper function to identify univariate fits in a folder and determine the
-#' number of folds for each fit.
-#' 
-#' @param data_dir Directory where the files are located.
-#' @param analysis_name analysis_name for file-searching
-#' @param j number of current ordinal variable
-#' @param k number of current continuous variable
-#' 
-#' @export
-get_num_folds <- function(data_dir,analysis_name,j=NA,k=NA) {
-  # Return the number of folds for one or more variables
-  # If neither j nor k are input, return the number of folds for all variables
-  # If j is input but not k, return the number for just j (and similarly for k)
-  # Both and j and k can be vectors
-  # get_num_folds(data_dir,analysis_name) is equivalent to
-  # get_num_folds(data_dir,analysis_name,j=1:J,k=1:K)
-
-  # Base cases	(a) j has length one and k is NA
-  #	            (b) k has length one and j is NA
-
-  have_base_case <- ( !all(is.na(j)) && length(j) == 1 && is.na(k) ) ||
-                  ( !all(is.na(k)) && length(k) == 1 && is.na(j) )
-
-  if(have_base_case) {
-    cases <- get_univariate_variable_cases(data_dir,analysis_name,j=j,k=k)
-
-    # Determine the number of folds. First, subset to the fold cases, which
-    # begin with, e.g., fold2_*' for the second fold
-    fold_cases <- cases[unlist(lapply(cases,function(f){startsWith(f,'fold')}))]
-
-    # Extract each fold number as an integer
-    fold_num_vect <- unlist(lapply(fold_cases,
-                                    function(f){as.numeric(
-                                      strsplit(substr(f,5,nchar(f)),'_')[[1]][1])
-                                    }))
-    num_folds <- max(fold_num_vect) # the number of folds
-    return(num_folds)
-  }
-
-  # This is not a base case
-
-  # Neither j nor k is input. Calculate for all variables
-  if(all(is.na(j)) && all(is.na(k))) {
-    prob0 <- readRDS(build_file_path(data_dir,analysis_name,"main_problem"))
-    J <- yada::get_J(prob0$mod_spec)
-    K <- yada::get_K(prob0$mod_spec)
-    if( (J == 0) && (K == 0) ) {
-      stop('Both J and K cannot be zero')
-    }
-
-    if(J > 0) {
-      j <- 1:J
-    }
-
-    if(K > 0) {
-      k <- 1:K
-    }
-  }
-
-  num_folds <- c()
-  if(!all(is.na(j))) {
-    for(jj in j) {
-       num_folds <- c(num_folds,get_num_folds(data_dir,analysis_name,j=jj))
-    }
-  }
-
-  if(!all(is.na(k))) {
-    for(kk in k) {
-       num_folds <- c(num_folds,get_num_folds(data_dir,analysis_name,k=kk))
-    }
-  }
-  return(num_folds)
-}
-
-#' @title A helper function to check the files in data_dir to get the cases (fit
-#' univariate models). Exactly one of j and k should be input.
-#' 
-#' @param data_dir Directory where files are located
-#' @param analysis_name analysis_name for file-searching
-#' @param j Number of current ordinal variable
-#' @param k Number of current continuous variable
-#' 
-#' @export
-
-get_univariate_variable_cases <- function(data_dir,analysis_name,j=NA,k=NA) {
-
-  if(length(j) != 1) {
-    stop('j should be NA or a scalar')
-  }
-
-  if(length(k) != 1) {
-    stop('k should be NA or a scalar')
-  }
-
-  if(!is.na(j) && !is.na(k)) {
-    stop('Only one of j and k should be input')
-  }
-
-  if(is.na(j) && is.na(k)) {
-    stop('At least one of j and k should be input')
-  }
-
-  files <- dir(data_dir)
-  # Subset to univariate fits for this analysis_name, which begin with
-  # 'solutiony_analysis_name'
-  files <- files[unlist(lapply(files,
-                               function(f){
-                                 startsWith(f,
-                                            paste0('solutiony_',
-                                                   analysis_name))
-                               }))]
-  # Subset to fits for this variable
-  if(!is.na(j)) {
-    # The pattern is 'ord_j_2_' for j=2.
-    files <- files[unlist(lapply(files,
-                                 function(f){
-                                   grepl(paste0('ord_j_',
-                                                j,
-                                                '_'),
-                                         f)
-                                 }))]
-  } else {
-    # The pattern is 'cont_k_2_' for k=2.
-    files <- files[unlist(lapply(files,
-                                 function(f){
-                                   grepl(paste0('cont_k_',
-                                                k,
-                                                '_'),
-                                         f)
-                                 }))]
-  }
-  # Remove the leading part of each file and the file extension ('.rds')
-  # Number of leading characters
-  num_leading <- nchar(paste0('solutiony_',analysis_name,'_'))
-  cases <- unlist(lapply(files,function(f){substr(f,num_leading+1,nchar(f))}))
-  cases <- unlist(lapply(cases,function(f){substr(f,1,nchar(f)-4)}))
-  return(cases)
-}
-
 #' @title
 #' Parse a joined model to get the individual mean and noise specs
 #'
@@ -1093,7 +1091,8 @@ parse_joined_model <- function(joined_model) {
 get_best_univariate_params <- function(data_dir,
                                        analysis_name,
                                        save_file=TRUE) {
-
+  # TODO: consider moduralizing by creating a stand-alone function that gets
+  #       the best model for a specified variable.
   problem0 <- readRDS(build_file_path(data_dir, analysis_name, "main_problem"))
   cv_data <- readRDS(build_file_path(data_dir, analysis_name, "cv_data"))
   ## Ordered list of variables
@@ -1220,9 +1219,9 @@ get_best_univariate_params <- function(data_dir,
 #'
 #' @export
 generate_mod_spec <- function(problem,
-                             model_params,
-                             cdep_spec,
-                             uni_variable=NA) {
+                              model_params,
+                              cdep_spec,
+                              uni_variable=NA) {
   if(is.na(uni_variable)) {
     if(cdep_spec != 'dep') {
       stop("cdep_spec does not match multivariate model type")
@@ -1405,22 +1404,6 @@ generate_ord_ci <- function(data_dir, analysis_name, var_name,
   return(ci_df)
 }
 
-#' @title Clear all the files in the temporary directory
-#'
-#' @description
-#' Clear all the files in the temporary directory. Directories are not deleted.
-#' clear_temp_dir is used in testing.
-#'
-#' @export
-clear_temp_dir <- function() {
-  for (f in dir(tempdir())) {
-    full_path <- file.path(tempdir(),f)
-    if (!dir.exists(full_path)) {
-      success <- file.remove(full_path)
-    }
-  }
-}
-
 #' @title
 #' Build a multivariate, conditionally independent model using the univariate
 #' cross-validation results.
@@ -1445,7 +1428,6 @@ clear_temp_dir <- function() {
 #'   other variables to set the scale.
 #'
 #' @export
-
 build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                                save_file=F,allow_corner=FALSE) {
   problem_file <- build_file_path(data_dir,
@@ -1730,7 +1712,6 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
 #' @param fold Fold number
 #' 
 #' @export
-
 crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
   # TODO: consider renaming this function to something like
   #       calc_out_of_sample_neg_log_liks
@@ -1776,4 +1757,3 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
   return(list(eta_vect_cindep=eta_vect_cindep,
               eta_vect_cdep=eta_vect_cdep))
 }
-

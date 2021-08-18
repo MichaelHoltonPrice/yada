@@ -2,7 +2,7 @@
 % Please edit documentation in R/cross_validation.R
 \name{get_num_folds}
 \alias{get_num_folds}
-\title{A helper function to identify univariate fits in a folder and determine the
+\title{A helper function to identify univariate fit in a folder and determine the
 number of folds for each fit.}
 \usage{
 get_num_folds(data_dir, analysis_name, j = NA, k = NA)
@@ -17,6 +17,6 @@ get_num_folds(data_dir, analysis_name, j = NA, k = NA)
 \item{k}{number of current continuous variable}
 }
 \description{
-A helper function to identify univariate fits in a folder and determine the
+A helper function to identify univariate fit in a folder and determine the
 number of folds for each fit.
 }

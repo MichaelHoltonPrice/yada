@@ -159,7 +159,7 @@ expect_false(
   fail_for_beta2(matrix(c(rep(0,10),rep(0,10),rep(1,10)),ncol=3),beta2_max=3)
 )
 
-# Test get_num_training_problems
+# Test get_num_training_problems [which does not use the file extensions]
 writeLines('temp',
            file.path(data_dir,paste0('train_', analysis_name, '_fold1.txt')))
 writeLines('temp',
@@ -190,16 +190,6 @@ success <- file.remove(file.path(data_dir,paste0('train_',
 
 # Test get_univariate_variable_cases
 expect_error(
-  get_univariate_variable_cases(data_dir, analysis_name),
-  "At least one of j and k should be input"
-)
-
-expect_error(
-  get_univariate_variable_cases(data_dir, analysis_name, j=1, k=1),
-  "Only one of j and k should be input"
-)
-
-expect_error(
   get_univariate_variable_cases(data_dir, analysis_name, j=c(1, 2)),
   "j should be NA or a scalar"
 )
@@ -207,6 +197,16 @@ expect_error(
 expect_error(
   get_univariate_variable_cases(data_dir, analysis_name, k=c(2, 3)),
   "k should be NA or a scalar"
+)
+
+expect_error(
+  get_univariate_variable_cases(data_dir, analysis_name),
+  "At least one of j and k should be input"
+)
+
+expect_error(
+  get_univariate_variable_cases(data_dir, analysis_name, j=1, k=1),
+  "Only one of j and k should be input"
 )
 
 expect_equal(
@@ -218,7 +218,6 @@ expect_equal(
   length(get_univariate_variable_cases(data_dir, analysis_name, k=1)),
   6
 )
-
 
 # Test get_num_folds
 expect_equal(
@@ -235,7 +234,6 @@ expect_equal(
   get_num_folds(data_dir, analysis_name, k=1),
   2
 )
-
 
 # Test crossval_univariate_problems
 solutiony_cont_pow_law_const_fold2 <-
@@ -261,7 +259,8 @@ success <- file.remove(file.path(data_dir,
                                         analysis_name,
                                         '_fold3_cont_k_1_FDL_pow_law',
                                         '_const.rds')))
-
+# TODO: consider changing input data so that NaN is not produced for model 4
+#       of ordinal variable
 expect_warning(
   cv_data <- crossval_univariate_models(data_dir, analysis_name, 0.05, 0.1, 5),
   'NaNs produced'
@@ -295,6 +294,24 @@ expect_equal(
 expect_equal(
   dim(cv_data$mod_select_cont[[1]]),
   c(2,6)
+)
+
+expect_equal(
+  names(cv_data),
+  c("cv_array_ord",
+    "cv_array_cont",
+    "num_folds",
+    "param_list_ord",
+    "param_list_cont",
+    "num_obs_vect",
+    "can_do_log_ord",
+    "ord_models",
+    "cont_models",
+    "mod_select_ord",
+    "mod_select_cont",
+    "cand_tol",
+    "scale_exp_min",
+    "beta2_max")
 )
 
 # Test write_matrix
@@ -372,6 +389,11 @@ for (mean_spec in  c("pow_law","pow_law_ord","log_ord","lin_ord")) {
 }
 
 # Test get_best_univariate_params
+expect_false(
+  file.exists(file.path(data_dir,
+                        'US-analysis_univariate_model_parameters.rds'))
+)
+
 expect_error(
   params <- get_best_univariate_params(data_dir,
                            analysis_name,
@@ -383,6 +405,7 @@ expect_true(
   file.exists(file.path(data_dir,
                         'US-analysis_univariate_model_parameters.rds'))
 )
+
 success <-
   file.remove(file.path(data_dir,
                         'US-analysis_univariate_model_parameters.rds'))
@@ -555,12 +578,14 @@ expect_equal(
 
 # Test generate_ord_ci
 library(doParallel)
-registerDoParallel(detectCores()-4)
+num_cores <- detectCores()
+if (num_cores >= 6) {
+  registerDoParallel(num_cores-4)
+}
 
 th_x <- list(fit_type="uniform",
              fit=c(0,80))
 
-# set.seed(2021)
 expect_error(
   ord_ci <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x),
   NA
@@ -571,17 +596,16 @@ expect_equal(
   c(7,6)
 )
 
-expect_equal(
-  ord_ci[3,5],
-  4.55
-)
-
 # Check functioning of the seed
-# set.seed(2021)
 expect_error(
   ord_ci_a <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
                               input_seed=12),
   NA
+)
+
+expect_equal(
+  ord_ci[3,5],
+  4.55
 )
 expect_error(
   ord_ci_b <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
@@ -619,6 +643,11 @@ expect_false(
   file.exists(file.path(tempdir(),"cindep_model_US-analysis.rds"))
 )
 
+# For the following tests, it's fine to use the main problem as the fold
+# problem
+saveRDS(problem,file.path(data_dir,paste0('train_',
+                                          analysis_name,
+                                          '_fold1.rds')))
 expect_error(
   cindep_model2 <- build_cindep_model(data_dir, analysis_name, 
                                       fold=1, save_file=T),
@@ -628,7 +657,11 @@ expect_error(
 expect_true(
   file.exists(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds"))
 )
-success <- file.remove(file.path(tempdir(),"cindep_model_US-analysis_fold1.rds"))
+success <- file.remove(file.path(tempdir(),
+                                 "cindep_model_US-analysis_fold1.rds"))
+success <- file.remove(file.path(data_dir,paste0('train_',
+                                                 analysis_name,
+                                                 '_fold1.rds')))
 
 # Create and fit simulated data to test the functioning of the standard error
 # calculation for build_cindep_model. Do so with a full simulation of the
@@ -1033,3 +1066,6 @@ expect_equal(
   unique(model$th_y_bar_se[6:8]),
   model$th_y_bar_se[6]
 )
+
+# TODO: add tests for crossval_multivariate_models. We may adopt a different
+#       approach in the near future, so wait to make the tests.
