@@ -1293,7 +1293,16 @@ load_best_univariate_model <- function(data_dir,
                                        load_data=FALSE) {
   # Read the cross-validation data and main problem
   cv_data <- readRDS(build_file_path(data_dir, analysis_name, "cv_data"))
-  problem <- readRDS(build_file_path(data_dir, analysis_name, "main_problem"))
+  if (is.na(fold)) {
+    problem <- readRDS(build_file_path(data_dir,
+                                       analysis_name,
+                                       "main_problem"))
+  } else {
+    problem <- readRDS(build_file_path(data_dir,
+                                       analysis_name,
+                                       "training_problem",
+                                       fold=fold))
+  }
 
   # Identify the index of the variable of interest
   ind_var <- which(problem$var_names == var_name)
