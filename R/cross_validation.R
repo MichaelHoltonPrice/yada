@@ -1439,11 +1439,15 @@ clear_temp_dir <- function() {
 #' @return A list with the parameter vector (th_y), model specification
 #'   (mod_spec), and transformed parameter vector (th_y_bar). If calc_se is
 #'   TRUE, the standard error for th_y_bar is added (th_y_bar_se).
+#' @return (Default: FALSE) If FALSE, an error is thrown if any standard errors
+#'   have negative values, which usually happens because an optimum is a corner
+#'   solution. If TRUE, an attempt is made to use pertinent median values from
+#'   other variables to set the scale.
 #'
 #' @export
 
 build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
-                               save_file=F) {
+                               save_file=F,allow_corner=FALSE) {
   problem_file <- build_file_path(data_dir,
                                   analysis_name,
                                   "main_problem")
@@ -1524,12 +1528,20 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
           se <- rep(NA,length(th_v))
         } else {
           if (any(diag(Hinv) <= 0)) {
-            stop(paste0("Not all diagonal entries of inv(H) are positive. ",
-                        "Univariate solution may be a corner solution or may ",
-                        "may not be an optimum for j=",j," and var_name=",
-                        problem$var_names[j]))
+            msg <- paste0("Not all diagonal entries of inv(H) are positive. ",
+                          "Univariate solution may be a corner solution or may ",
+                          "may not be an optimum for j=",j," and var_name=",
+                          problem$var_names[j])
+            if(!allow_corner) {
+              stop(msg)
+            } else {
+              warning(msg)
+              ind_fix[j] <- TRUE
+            }
+          } else {
+            # Hinv is fine
+            se <- sqrt(diag(Hinv))
           }
-          se <- sqrt(diag(Hinv))
         }
 
         a_scale_ord   <-
@@ -1632,12 +1644,19 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
           se <- rep(NA,length(th_v))
         } else {
             if (any(diag(Hinv) <= 0)) {
-            stop(paste0("Not all diagonal entries of inv(H) are positive. ",
-                        "Univariate solution may be a corner solution or may ",
-                        "may not be an optimum for k=",k," and var_name=",
-                        problem$var_names[J+k]))
-          }
-          se <- sqrt(diag(Hinv))
+              msg <- paste0("Not all diagonal entries of inv(H) are positive. ",
+                            "Univariate solution may be a corner solution or may ",
+                            "may not be an optimum for k=",k," and var_name=",
+                            problem$var_names[J+k])
+              if (!allow_corner) {
+                stop(msgs)
+              } else {
+                warning(msg)
+                ind_fix[k] <- TRUE              }
+          } else {
+              # Hinv is fine
+              se <- sqrt(diag(Hinv))
+            }
         }
 
         a_scale_cont <-

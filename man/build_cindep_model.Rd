@@ -10,7 +10,8 @@ build_cindep_model(
   analysis_name,
   fold = NA,
   calc_se = FALSE,
-  save_file = F
+  save_file = F,
+  allow_corner = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,11 @@ build_cindep_model(
 A list with the parameter vector (th_y), model specification
   (mod_spec), and transformed parameter vector (th_y_bar). If calc_se is
   TRUE, the standard error for th_y_bar is added (th_y_bar_se).
+
+(Default: FALSE) If FALSE, an error is thrown if any standard errors
+  have negative values, which usually happens because an optimum is a corner
+  solution. If TRUE, an attempt is made to use pertinent median values from
+  other variables to set the scale.
 }
 \description{
 Build a multivariate, conditionally independent model using the univariate
