@@ -1649,7 +1649,7 @@ build_cindep_model <- function(data_dir, analysis_name, fold=NA, calc_se=FALSE,
                             "may not be an optimum for k=",k," and var_name=",
                             problem$var_names[J+k])
               if (!allow_corner) {
-                stop(msgs)
+                stop(msg)
               } else {
                 warning(msg)
                 ind_fix[k] <- TRUE              }

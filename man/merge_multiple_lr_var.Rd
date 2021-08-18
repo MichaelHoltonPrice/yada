@@ -27,7 +27,7 @@ The merged data frame
 \description{
 The input is a data frame with multiple variables that have left and right
 aspects (to merge a single variable, use merge_lr_var). Call merge_lr_var
-for each variable to merge it. The input variables approach and baseVar
+for each variable to merge it. The input variables approach and base_var
 should be vectors of the same length (the number of variables to merge).
 sideLabels and sideLoc are as in [merge_lr_var], but are assumed to be the
 same for all variables (consequently, it is not possible to mix prefixing,

@@ -25,7 +25,7 @@ The merged data frame
 }
 \description{
 The input is a data frame with a variable that has left and right aspects.
-For example, the input data frame might contain the left and and right
+For example, the input data frame might contain the left and right
 variables man_I1_L and man_I1_R; the output data frame would contain a
 single, merged variable man_I1. The approach for merging variables must be
 input. There are five allowed approaches: "left", "right", "mean", "lowest",

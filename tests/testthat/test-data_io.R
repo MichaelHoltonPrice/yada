@@ -35,16 +35,6 @@ expect_error(
   "The category names are not unique"
 )
 
-# Test load_cat_list by writing a file to tempdir()
-temp_file <- file.path(data_dir,"temp.txt")
-writeLines(c("var1","a c d b","var2","{b a} -1 {c d e} 4"),temp_file)
-expect_equal(
-  load_cat_list(temp_file),
-  list(var1="a c d b",
-       var2="{b a} -1 {c d e} 4")
-)
-success <- file.remove(temp_file)
-
 # Test apply_cat_spec
 expect_error(
   apply_cat_spec(as.factor(c("0","1")),"0 1"),
@@ -55,7 +45,6 @@ expect_error(
   apply_cat_spec(c("0","2"),"0 1"),
   "2 not found in category mapping"
 )
-
 
 expect_equal(
   apply_cat_spec(c("a",NA,"d","b","c", NA,"d","a"), "a c d b"),
@@ -102,7 +91,7 @@ expect_error(
                side_loc="end",
                side_labels=c("_L", "_R"),
                approach="bad"),
-  "Invalid approach specified"
+  "Invalid approach specified. See documentation for merge_lr_var."
 )
 
 expect_error(
@@ -111,7 +100,7 @@ expect_error(
                side_loc="end",
                side_labels="_L",
                "left"),
-  "sideLabels should be length 2"
+  "side_labels should be length 2"
 )
 
 expect_error(
@@ -120,7 +109,7 @@ expect_error(
                side_loc="end",
                side_labels=c("_L", "_L"),
                "left"),
-  "sideLabels[1] should not equal sideLabels[2]",
+  "side_labels[1] should not equal side_labels[2]",
   fixed=TRUE
 )
 
@@ -130,7 +119,7 @@ expect_error(
                side_loc="bad_loc",
                side_labels=c("_L", "_R"),
                "left"),
-  "sideLoc must be either 'start' or 'end'"
+  "side_loc must be either 'start' or 'end'"
 )
 
 expect_error(
@@ -241,7 +230,7 @@ expect_equal(
             cont_var_R = c(12.5,3.2, 7.0,NA,8.7,1.0))
 )
 
-# Check merge for prefixing
+# Check merge for prefixing for one case
 test_df <- data.frame(age = c(10,7,12,1,4,8),
                       sex = c('M','F','F','M','M','F'),
                       left_ord_var = c(0,NA,1,NA,2,NA),
@@ -272,14 +261,14 @@ test_df <- data.frame(age = c(10,7,12,1,4,8),
                       cont_var_R = c(12.5,3.2, 7.0,NA,8.7,1.0),
                       other_var = 1:6)
 
-# Check that an error is thrown if approach and baseVar are not the same length
+# Check that an error is thrown if approach and base_var are not the same length
 expect_error(
   merge_multiple_lr_var(test_df,
                         base_var="ord_var",
                         side_loc="end",
                         side_labels=c("_L", "_R"),
                         approach=c("left","mean")),
- "approach and baseVar should have the same length"
+ "approach and base_var should have the same length"
 )
 
 # Check that merge_multiple_lr_var gives the correct result for one case
@@ -297,8 +286,8 @@ expect_equal(
 )
 
 # Test load_var_info
-
 # Confirm an error is thrown if a two column specification is used
+temp_file <- file.path(data_dir,"temp.txt")
 writeLines(c("Variable,Type","var1,x"),temp_file)
 expect_error(
   load_var_info(temp_file),
@@ -311,7 +300,7 @@ success <- file.remove(temp_file)
 writeLines(c("Variable,Type,Bad,Missing_Value","var1,x,"),temp_file)
 expect_error(
   load_var_info(temp_file),
-  "Columns have the wrong names (see function details)",
+  "Columns have the wrong names (see function documentation)",
   fixed=TRUE
 )
 success <- file.remove(temp_file)
@@ -340,7 +329,7 @@ lines_to_write <- c(
 writeLines(lines_to_write,temp_file)
 expect_error(
   load_var_info(temp_file),
-  "Columns have the wrong names (see function details)",
+  "Columns have the wrong names (see function documentation)",
   fixed=TRUE
 )
 success <- file.remove(temp_file)
@@ -388,8 +377,8 @@ expect_error(
   load_var_info(temp_file),
   "More than one x variable is specified"
 )
-
 success <- file.remove(temp_file)
+
 # Confirm an error is thrown if an invalid variable type is used
 lines_to_write <- c(
   paste("Variable",
@@ -675,42 +664,84 @@ expect_error(
 )
 success <- file.remove(temp_file)
 
+# Create the expected matrix for cp_data$problem$Y with a for loop so that
+# different attributes do not create a failure in expect_equal.
+Y_expected <- matrix(NA,4,3)
+for (row in 1:4) {
+  Y_expected[row,] <- as.numeric(cp_data$cp_df[row,
+                                              c("ord1_L","ord1_R","cont1")])
+}
+Y_expected <- t(Y_expected)
+
 expect_equal(
-  cp_data$cp_df,
-  data.frame(x=c(1,2,3,4),
-             ord1_L=c(0,NA,2,2),
-             ord1_R=c(3,0,1,2),
-             cont1=c(1.5,2.5,3.5,4.5),
-             stringsAsFactors=FALSE)
+  cp_data,
+  list(
+    cp_df=data.frame(x=c(1,2,3,4),
+                     ord1_L=c(0,NA,2,2),
+                     ord1_R=c(3,0,1,2),
+                     cont1=c(1.5,2.5,3.5,4.5),
+                     stringsAsFactors=FALSE),
+    problem=list(x=as.vector(cp_data$cp_df$x),
+                 Y=Y_expected,
+                 var_names=c("ord1_L","ord1_R","cont1"),
+                 mod_spec=list(J=2,K=1,M=c(3,3))
+                 )
+  )
 )
 
 # Test generate_cv_problems
 expect_error(
-  cvList <- generate_cv_problems(cp_data$problem, 2, seed=234227327),
+  cv_list <- generate_cv_problems(cp_data$problem, 2, seed=234227327),
   NA
 )
 
 expect_equal(
-  length(cvList),
-  3  # train, test, seed
+  names(cv_list),
+  c("test_list","train_list","seed")
 )
 
 expect_equal(
-  length(cvList$test_list),
+  length(cv_list$test_list),
   2  # 2 folds
 )
 
 expect_equal(
-  cvList$seed,
+  cv_list$seed,
   234227327
 )
 
 expect_equal(
-  dim(cvList$train_list[[1]]$Y),
+  dim(cv_list$train_list[[1]]$Y),
   c(3,2)
 )
 
-# Test save_problem_to
+expect_error(
+  cv_list <- generate_cv_problems(cp_data$problem, 2, seed=234227327),
+  NA
+)
+
+expect_error(
+  cv_list2 <- generate_cv_problems(cp_data$problem, 2, seed=234227327),
+  NA
+)
+
+expect_equal(
+  cv_list,
+  cv_list2
+)
+
+expect_error(
+  cv_list3 <- generate_cv_problems(cp_data$problem, 2, seed=234227328),
+  NA
+)
+
+# In principle cv_list3 could yield the same fold partition as cv_list since
+# the fold sizes are small, but the preceding seeds that is not the case.
+expect_false(
+  all(cv_list$test_list[[1]]$x == cv_list3$test_list[[1]]$x)
+)
+
+# Test save_problem
 expect_error(
   save_problem(data_dir,"temp",cp_data$problem),
   NA
@@ -722,7 +753,7 @@ expect_true(
 success <- file.remove(file.path(data_dir,'problem_temp.rds'))
 
 expect_error(
-  save_problem(data_dir,"temp",cvList, is_folds=T),
+  save_problem(data_dir,"temp",cv_list, is_folds=T),
   NA
 )
 
@@ -904,11 +935,35 @@ problem$mod_spec$J <- 2
 problem$mod_spec$K <- 3
 problem$mod_spec$M <- c(2,2)
 
+# Make a reduced-size fold problem
+fold_problem <- list()
+fold_problem$x <- 0:7
+fold_problem$Y <- t(as.matrix(cbind(c(0,0,0,0,1,1,1,2),
+                                    c(0,0,0,0,1,1,1,2),
+                                    2*fold_problem$x+1 + 0.1*rnorm(8),
+                                    2*fold_problem$x+1 + 0.1*rnorm(8),
+                                    2*fold_problem$x+1 + 0.1*rnorm(8))))
+fold_problem$var_names <- c('ord1','ord2','cont1','cont2','cont3')
+fold_problem$mod_spec$J <- 2
+fold_problem$mod_spec$K <- 3
+fold_problem$mod_spec$M <- c(2,2)
+
 saveRDS(problem, build_file_path(data_dir,analysis_name, "main_problem"))
 expect_error(
   ord_problems <- build_univariate_ord_problems(data_dir, analysis_name),
   NA
 )
+
+for (i in 1:length(ord_problems)) {
+  expect_equal(
+    length(ord_problems[[i]]$x),
+    10
+  )
+  expect_equal(
+    length(ord_problems[[i]]$v),
+    10
+  )
+}
 
 expect_equal(
   length(ord_problems),
@@ -923,15 +978,26 @@ expect_error(
   NA
 )
 
+for (i in 1:length(ord_problems)) {
+  expect_equal(
+    length(ord_problems[[i]]$x),
+    10
+  )
+  expect_equal(
+    length(ord_problems[[i]]$v),
+    10
+  )
+}
+
 expect_equal(
   length(ord_problems),
   1*2
 )
 
-saveRDS(problem, build_file_path(data_dir,
+saveRDS(fold_problem, build_file_path(data_dir,
                                  analysis_name,
                                  "training_problem",fold=1))
-saveRDS(problem, build_file_path(data_dir,
+saveRDS(fold_problem, build_file_path(data_dir,
                                  analysis_name,
                                  "training_problem",fold=2))
 expect_error(
@@ -940,6 +1006,26 @@ expect_error(
                                                 add_folds=TRUE),
   NA
 )
+
+for (i in 1:length(ord_problems)) {
+  if (i <= 12) {
+    # Main problem has ten observations
+    num_obs <- 10
+  } else {
+    # Fold problems have eight observations (which would not be the number of
+    # observations, 5, if the cross-validation were generated with
+    generate_cv_problems
+    num_obs <- 8
+  }
+  expect_equal(
+    length(ord_problems[[i]]$x),
+    num_obs
+  )
+  expect_equal(
+    length(ord_problems[[i]]$v),
+    num_obs
+  )
+}
 
 expect_equal(
   length(ord_problems),
@@ -954,6 +1040,26 @@ expect_error(
                                                 add_folds=TRUE),
   NA
 )
+
+for (i in 1:length(ord_problems)) {
+  if (i <= 2) {
+    # Main problem has ten observations
+    num_obs <- 10
+  } else {
+    # Fold problems have eight observations (which would not be the number of
+    # observations, 5, if the cross-validation were generated with
+    generate_cv_problems
+    num_obs <- 8
+  }
+  expect_equal(
+    length(ord_problems[[i]]$x),
+    num_obs
+  )
+  expect_equal(
+    length(ord_problems[[i]]$v),
+    num_obs
+  )
+}
 
 expect_equal(
   length(ord_problems),
@@ -978,6 +1084,17 @@ expect_error(
   NA
 )
 
+for (i in 1:length(cont_problems)) {
+  expect_equal(
+    length(cont_problems[[i]]$x),
+    10
+  )
+  expect_equal(
+    length(cont_problems[[i]]$w),
+    10
+  )
+}
+
 expect_equal(
   length(cont_problems),
   2*3
@@ -991,6 +1108,17 @@ expect_error(
   NA
 )
 
+for (i in 1:length(cont_problems)) {
+  expect_equal(
+    length(cont_problems[[i]]$x),
+    10
+  )
+  expect_equal(
+    length(cont_problems[[i]]$w),
+    10
+  )
+}
+
 expect_equal(
   length(cont_problems),
   1*3
@@ -1002,6 +1130,26 @@ expect_error(
                                                   add_folds=TRUE),
   NA
 )
+
+for (i in 1:length(cont_problems)) {
+  if (i <= 6) {
+    # Main problem has ten observations
+    num_obs <- 10
+  } else {
+    # Fold problems have eight observations (which would not be the number of
+    # observations, 5, if the cross-validation were generated with
+    generate_cv_problems
+    num_obs <- 8
+  }
+  expect_equal(
+    length(cont_problems[[i]]$x),
+    num_obs
+  )
+  expect_equal(
+    length(cont_problems[[i]]$w),
+    num_obs
+  )
+}
 
 expect_equal(
   length(cont_problems),
@@ -1016,6 +1164,26 @@ expect_error(
                                                   add_folds=TRUE),
   NA
 )
+
+for (i in 1:length(cont_problems)) {
+  if (i <= 3) {
+    # Main problem has ten observations
+    num_obs <- 10
+  } else {
+    # Fold problems have eight observations (which would not be the number of
+    # observations, 5, if the cross-validation were generated with
+    generate_cv_problems
+    num_obs <- 8
+  }
+  expect_equal(
+    length(cont_problems[[i]]$x),
+    num_obs
+  )
+  expect_equal(
+    length(cont_problems[[i]]$w),
+    num_obs
+  )
+}
 
 expect_equal(
   length(cont_problems),

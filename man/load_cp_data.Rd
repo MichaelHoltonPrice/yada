@@ -13,8 +13,8 @@ load_cp_data(data_file, var_info)
 [load_var_info])}
 }
 \value{
-A list containing 1) a data frame containing the cumulative probit 
-data and 2) the cumulative probit problem file
+A named list containing 1) a data frame containing the cumulative probit
+data ("cp_df") and 2) the cumulative probit problem file ("problem")
 }
 \description{
 Two inputs are needed, the path to the data file (data_file) and a data frame

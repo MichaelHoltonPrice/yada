@@ -47,7 +47,7 @@ file but are in the data file are ignored in [load_cp_data].
 
 Details on Categories: Each ordinal variable must explicitly define the
 allowable categories and their order in the format expected by
-[parge_cat_spec].
+[parse_cat_spec].
 
 Details on Left_Right_Side, Left_Label, Right_Label, and Left_Right_Approach:
 Optionally, variables may be specified as left/right variables with the

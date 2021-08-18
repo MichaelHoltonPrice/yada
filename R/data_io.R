@@ -1,4 +1,3 @@
-
 #' @title
 #' Parse a category specification
 #'
@@ -116,41 +115,6 @@ parse_cat_spec <- function(cat_spec) {
   return(cat_map)
 }
 
-#' @title Load a category list from file
-#'
-#' @description
-#' Load a category list from input text file. The text file should alternate
-#' lines with variable names and category specifications, e.g.:
-#'
-#' var1
-#' a c d b
-#' var2
-#' {b a} -1 {c d e} 4
-#' ...
-#'
-#' See [parse_cat_spec]
-#' yada
-#'
-#' @param file_path The file path for the .txt file containing ordinal variable
-#'   category specifications
-#'
-#' @return A named list where the names are variable names and the elements are
-#'   category spefications
-#'
-#' @export
-load_cat_list <- function(file_path){
-  lns <- readLines(file_path)
-  cat_list <- list()
-  J <- length(lns)/2
-  for(j in 1:J) {
-    # e.g., "FH_EF_L"
-    var_name <- lns[1 + 2*(j-1)]
-    # e.g., "0 1 12 2 23 3 4"
-    cat_spec <- lns[2 + 2*(j-1)]
-    cat_list[[var_name]] <- cat_spec
-  }
-  return(cat_list)
-}
 #' @title
 #' Apply a category specification to an input vector of original string
 #' categories
@@ -256,7 +220,7 @@ build_lr_var <- function(base_var,
 #'
 #' @description
 #' The input is a data frame with a variable that has left and right aspects.
-#' For example, the input data frame might contain the left and and right
+#' For example, the input data frame might contain the left and right
 #' variables man_I1_L and man_I1_R; the output data frame would contain a
 #' single, merged variable man_I1. The approach for merging variables must be
 #' input. There are five allowed approaches: "left", "right", "mean", "lowest",
@@ -323,24 +287,23 @@ merge_lr_var <- function(input_df,
                          approach) {
 
   if (!(approach %in% c("left","right","mean","lowest","highest"))) {
-    stop("Invalid approach specified")
+    stop("Invalid approach specified. See documentation for merge_lr_var.")
   }
 
   if (length(side_labels) != 2) {
-    stop("sideLabels should be length 2")
+    stop("side_labels should be length 2")
   }
 
   if (side_labels[1] == side_labels[2]) {
-    stop("sideLabels[1] should not equal sideLabels[2]")
+    stop("side_labels[1] should not equal side_labels[2]")
   }
 
   if( !(side_loc %in% c("start", "end"))) {
-    stop("sideLoc must be either 'start' or 'end'")
+    stop("side_loc must be either 'start' or 'end'")
   }
 
   # Build the left and right variable and make sure that each has a
-  # corresponding column in inputDf
-  
+  # corresponding column in input_df
   left_var <- build_lr_var(base_var, side_loc, side_labels[1])
   right_var <- build_lr_var(base_var, side_loc, side_labels[2])
 
@@ -431,7 +394,7 @@ merge_lr_var <- function(input_df,
 #' @description
 #' The input is a data frame with multiple variables that have left and right
 #' aspects (to merge a single variable, use merge_lr_var). Call merge_lr_var
-#' for each variable to merge it. The input variables approach and baseVar
+#' for each variable to merge it. The input variables approach and base_var
 #' should be vectors of the same length (the number of variables to merge).
 #' sideLabels and sideLoc are as in [merge_lr_var], but are assumed to be the
 #' same for all variables (consequently, it is not possible to mix prefixing,
@@ -475,7 +438,7 @@ merge_multiple_lr_var <- function(input_df,
 
 
   if (length(approach) != length(base_var)) {
-    stop("approach and baseVar should have the same length")
+    stop("approach and base_var should have the same length")
   }
 
   # Iterate over variables to merge them
@@ -529,7 +492,7 @@ merge_multiple_lr_var <- function(input_df,
 #'
 #' Details on Categories: Each ordinal variable must explicitly define the
 #' allowable categories and their order in the format expected by
-#' [parge_cat_spec].
+#' [parse_cat_spec].
 #'
 #' Details on Left_Right_Side, Left_Label, Right_Label, and Left_Right_Approach:
 #' Optionally, variables may be specified as left/right variables with the
@@ -554,6 +517,7 @@ merge_multiple_lr_var <- function(input_df,
 #'
 #' @export
 load_var_info <- function(var_info_file) {
+  # TODO: check that @examples works (and the same for load_cp_data)
   var_info <- read.csv(var_info_file,
                        colClasses="character")
 
@@ -568,7 +532,7 @@ load_var_info <- function(var_info_file) {
                                   "Type",
                                   "Categories",
                                   "Missing_Value"))) {
-      stop("Columns have the wrong names (see function details)")
+      stop("Columns have the wrong names (see function documentation)")
     }
   } else {
     if (!all(names(var_info) == c("Variable",
@@ -579,7 +543,7 @@ load_var_info <- function(var_info_file) {
                                   "Left_Label",
                                   "Right_Label",
                                   "Left_Right_Approach"))) {
-      stop("Columns have the wrong names (see function details)")
+      stop("Columns have the wrong names (see function documentation)")
     }
   }
 
@@ -619,6 +583,7 @@ load_var_info <- function(var_info_file) {
 
   return(var_info)
 }
+
 #' @title
 #' Build a complete vector of variable names for the input data frame, var_info
 #' (for details on var_info, see [load_var_info]
@@ -683,7 +648,6 @@ build_var_names <- function(var_info) {
 parse_NA_values <- function(missing_values) {
   # The input missing_values is something like:
   # "NA,-1" where each value to be replaced with NA is separated by a comma
-  
   na_values <- strsplit(missing_values,',')[[1]]
   
   return(na_values)
@@ -718,8 +682,8 @@ parse_NA_values <- function(missing_values) {
 #' head(cp_data$cp_df)  # Top rows of cumulative probit data frame
 #' head(cp_data$problem)  # cumulative probit problem as list
 #'
-#' @return A list containing 1) a data frame containing the cumulative probit 
-#' data and 2) the cumulative probit problem file
+#' @return A named list containing 1) a data frame containing the cumulative probit
+#' data ("cp_df") and 2) the cumulative probit problem file ("problem")
 #'
 #' @export
 load_cp_data <- function(data_file,var_info) {
@@ -904,67 +868,6 @@ load_cp_data <- function(data_file,var_info) {
   return(list(cp_df=cp_df,problem=problem))
 }
 
-
-
-#' @title Wrapper function to save problem files
-#'
-#' @description
-#' Save the input problem to the data_dir directory using the unique ID
-#' analysis_name. Either a main problem is saved (if is_folds is FALSE, the
-#' default) or a set of fold problems are saved (if is_folds is TRUE). If
-#' is_folds is TRUE, the input should be a list with named elements train_list
-#' and test_list that contain the fold training and test problems.
-#'
-#' @param data_dir The data directory with problems and results
-#' @param analysis_name A unique analysis name (for the input data directory)'
-#' @param problem Problem that needs saving
-#' @param is_folds Whether this object represents folds
-#'
-#' @examples 
-#' # Generate a dummy problem
-#' problem <- list(x = 1:6,
-#'                 Y = rnorm(6))
-#' # Use R's temporary directory as the data directory
-#' data_dir <- tempdir()
-#'
-#' # Use 'ex' as the unique analysis ID
-#' analysis_name <- 'ex'
-#'
-#' # Check if problem file already exists; should be FALSE
-#' print(file.exists(paste0(data_dir,'problem_ex.rds')))
-#' 
-#' # Call save_problem to save problem_ex.rds in data_dir
-#' save_problem(data_dir,analysis_name,problem)
-#' 
-#' # Check if problem file now exists in dir_path; should be TRUE
-#' file.exists(paste0(dir_path,'problem_ex.rds'))  
-#' 
-#' # Remove dummy problem file from temporary directory
-#' was_successful <- file.remove(paste0(dir_path, 'problem_ex.rds'))
-#' 
-#' @export
-save_problem <- function(data_dir, analysis_name, problem, is_folds=F) {
-  if(is_folds){
-    for(ff in 1:length(problem$train_list)){
-      saveRDS(problem$train_list[[ff]],
-              build_file_path(data_dir,
-                              analysis_name,
-                              "training_problem",
-                              fold=ff))
-      saveRDS(problem$test_list[[ff]],
-              build_file_path(data_dir,
-                              analysis_name,
-                              "test_problem",
-                              fold=ff))
-    }
-  } else {
-      saveRDS(problem,
-              build_file_path(data_dir,
-                              analysis_name,
-                              "main_problem"))
-  }
-}
-
 #' @title A wrapper to generate the cross-validation problems
 #'
 #' @description A wrapper to generate the cross-validation problems
@@ -1008,11 +911,11 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
                   location  = problem0$location[folds[[ff]]],
                   var_names = problem0$var_names)
 
-    # Y and mod_spec would have to be adjusted for any ordinal variable with a
+    # Y and mod_spec may need to be adjusted for any ordinal variable with a
     # reduced number of categories in the training data. This would also have to
     # be accounted for in the test data since some categories in the test data
     # do not have a unique mapping to collapsed categories in the training data.
-    # If a remapping is needed, throw an error.
+    # If a remapping is needed, it is done below.
 
     # First create Y_train and mod_spec by iterating variables, collapsing
     # categories as necessary
@@ -1095,6 +998,72 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
   }
   return(list(test_list=test_list,train_list=train_list,seed=seed))
 }
+
+#' @title Wrapper function to save problem files
+#'
+#' @description
+#' Save the input problem to the data_dir directory using the unique ID
+#' analysis_name. Either a main problem is saved (if is_folds is FALSE, the
+#' default) or a set of fold problems are saved (if is_folds is TRUE). If
+#' is_folds is TRUE, the input should be a list with named elements train_list
+#' and test_list that contain the fold training and test problems.
+#'
+#' @param data_dir The data directory with problems and results
+#' @param analysis_name A unique analysis name (for the input data directory)'
+#' @param problem Problem that needs saving
+#' @param is_folds Whether this object represents folds
+#'
+#' @examples 
+#' # Generate a dummy problem
+#' problem <- list(x = 1:6,
+#'                 Y = rnorm(6))
+#' # Use R's temporary directory as the data directory
+#' data_dir <- tempdir()
+#'
+#' # Use 'ex' as the unique analysis ID
+#' analysis_name <- 'ex'
+#'
+#' # Check if problem file already exists; should be FALSE
+#' print(file.exists(paste0(data_dir,'problem_ex.rds')))
+#' 
+#' # Call save_problem to save problem_ex.rds in data_dir
+#' save_problem(data_dir,analysis_name,problem)
+#' 
+#' # Check if problem file now exists in dir_path; should be TRUE
+#' file.exists(paste0(dir_path,'problem_ex.rds'))  
+#' 
+#' # Remove dummy problem file from temporary directory
+#' was_successful <- file.remove(paste0(dir_path, 'problem_ex.rds'))
+#' 
+#' @export
+save_problem <- function(data_dir, analysis_name, problem, is_folds=F) {
+  # TODO: Whether the problem represents folds could be determined from its
+  #       form.
+  # TODO: Consider saving the cross-validation in a single file, including
+  #       saving the random number seed. Currently, the seed is never saved
+  #       anywhere.
+  if(is_folds){
+    for(ff in 1:length(problem$train_list)){
+      saveRDS(problem$train_list[[ff]],
+              build_file_path(data_dir,
+                              analysis_name,
+                              "training_problem",
+                              fold=ff))
+      saveRDS(problem$test_list[[ff]],
+              build_file_path(data_dir,
+                              analysis_name,
+                              "test_problem",
+                              fold=ff))
+    }
+  } else {
+      saveRDS(problem,
+              build_file_path(data_dir,
+                              analysis_name,
+                              "main_problem"))
+  }
+}
+
+
 
 #' @title Build the path to a file in the data directory
 #'
