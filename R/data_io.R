@@ -1422,6 +1422,10 @@ build_univariate_cont_problems <- function(data_dir,
   J <- get_J(problem$mod_spec)
   cont_prob_list <- list()
   for(k in 1:problem$mod_spec$K) {
+    problem_f <- readRDS(build_file_path(data_dir,
+                                         analysis_name,
+                                         "training_problem",
+                                         fold=f))
     for(mod_num in 1:length(mean_specs)) {
       var_name <- problem_f$var_names[J+k]
 
