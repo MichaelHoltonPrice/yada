@@ -1296,11 +1296,11 @@ build_univariate_ord_problems <- function(data_dir,
           mod_spec$mean_spec  <- mean_specs [mod_num]
           mod_spec$noise_spec <- noise_specs[mod_num]
           mod_spec$J <- 1
-          mod_spec$M <- problem$mod_spec$M[j]
+          mod_spec$M <- problem_f$mod_spec$M[j]
 
           # Handle missing variables
-          x <- problem$x
-          v <- problem$Y[j,]
+          x <- problem_f$x
+          v <- problem_f$Y[j,]
           ind_keep <- !is.na(x) & !is.na(v)
           x <- x[ind_keep]
           v <- v[ind_keep]
