@@ -590,7 +590,20 @@ expect_error(
   ord_ci <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x),
   NA
 )
+expect_equal(
+  dim(ord_ci),
+  c(7,6)
+)
 
+expect_error(
+  ord_ci <- generate_ord_ci(data_dir,
+                            analysis_name,
+                            "FH_EF",
+                            th_x,
+                            save_file=TRUE,
+                            j=2),
+  NA
+)
 expect_equal(
   dim(ord_ci),
   c(7,6)

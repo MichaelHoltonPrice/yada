@@ -11,7 +11,8 @@ generate_ord_ci(
   var_name,
   th_x,
   input_seed = NA,
-  save_file = F
+  save_file = F,
+  j = NA
 )
 }
 \arguments{

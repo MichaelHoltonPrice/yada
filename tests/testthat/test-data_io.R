@@ -832,6 +832,16 @@ expect_equal(
 expect_equal(
   build_file_path(data_dir,
                   analysis_name,
+                  "ordinal_ci",
+                  j=2,
+                  var_name="var_name"),
+  file.path(tempdir(),paste0("ordinal_ci_US-analysis_j_2_",
+                             "var_name.rds"))
+)
+
+expect_equal(
+  build_file_path(data_dir,
+                  analysis_name,
                   "univariate_ord_rmd",
                   j=2,
                   var_name="var_name"),

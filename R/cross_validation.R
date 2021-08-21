@@ -1385,7 +1385,7 @@ load_best_univariate_model <- function(data_dir,
 #'
 #' @export
 generate_ord_ci <- function(data_dir, analysis_name, var_name,
-                            th_x, input_seed=NA, save_file=F) {
+                            th_x, input_seed=NA, save_file=F, j=NA) {
 
   # Load the best ordinal model
   ord_model <- load_best_univariate_model(data_dir, analysis_name,
@@ -1398,6 +1398,7 @@ generate_ord_ci <- function(data_dir, analysis_name, var_name,
     saveRDS(ci_df, build_file_path(data_dir,
                                    analysis_name,
                                    "ordinal_ci",
+                                   j=j,
                                    var_name=var_name))
   }
   
