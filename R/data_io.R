@@ -832,19 +832,24 @@ load_cp_data <- function(data_file,var_info) {
   N <- length(x)
   Y <- matrix(NA,J+K,N)
   M <- rep(NA,J)
-
-  for (j in 1:length(ind_ord)) {
-    var_j <- var_name_vect[ind_ord[j]]
-    Y[j,] <- cp_df[,var_j]
-    ind_vi <- which(base_var_vect[ind_ord[j]] == var_info$Variable)
-    cat_spec <- var_info[ind_vi,"Categories"]
-    cat_map <- parse_cat_spec(cat_spec)
-    M[j] <- length(unique(cat_map)) - 1
+  
+  # Populate Y and M for ordinal variables
+  if(length(ind_ord) > 0) {
+    for (j in 1:length(ind_ord)) {
+      var_j <- var_name_vect[ind_ord[j]]
+      Y[j,] <- cp_df[,var_j]
+      ind_vi <- which(base_var_vect[ind_ord[j]] == var_info$Variable)
+      cat_spec <- var_info[ind_vi,"Categories"]
+      cat_map <- parse_cat_spec(cat_spec)
+      M[j] <- length(unique(cat_map)) - 1
+    }
   }
 
-  for (k in 1:length(ind_cont)) {
-    var_k <- var_name_vect[ind_cont[k]]
-    Y[J+k,] <- cp_df[,var_k]
+  if(length(ind_cont) > 0) {
+    for (k in 1:length(ind_cont)) {
+      var_k <- var_name_vect[ind_cont[k]]
+      Y[J+k,] <- cp_df[,var_k]
+    }
   }
 
   # Check for x NA in problem
