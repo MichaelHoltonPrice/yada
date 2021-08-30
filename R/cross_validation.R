@@ -1079,7 +1079,7 @@ parse_joined_model <- function(joined_model) {
 #' Wrapper function that takes object cv_data, stores the highest ranking model
 #' specification, noise specification, and model variables, and outputs all
 #' results as a RDS file in dataframe format.
-#' 
+#'
 #' @param data_dir Directory to save univariate model parameters
 #' @param analysis_name analysis_name for file-naming
 #' @param save_file Logical whether to save file or not as .rds
@@ -1097,87 +1097,91 @@ get_best_univariate_params <- function(data_dir,
   cv_data <- readRDS(build_file_path(data_dir, analysis_name, "cv_data"))
   ## Ordered list of variables
   variables <- problem0$var_names
-  
+
   ## Extract ordinal model parameters
   ord_output <- NULL
-  for(i in 1:length(cv_data$mod_select_ord)) {
-    var_ord <- variables[i]
-    type_ord <- 'Ord'
-    select_idx_ord <- which(cv_data$mod_select_ord[[i]]$model_rank == 1)
-    if(length(select_idx_ord) == 0) {
-      print(paste0('Variable ', var_ord, ' yielded no model selection.'))
-      mean_spec_ord <- NA
-      noise_spec_ord <- NA
-      param_names_ord <- NA
-      best_params_ord <- NA
-      temp_output_ord <- cbind(var_ord,
-                               type_ord,
-                               mean_spec_ord,
-                               noise_spec_ord,
-                               param_names_ord,
-                               best_params_ord)
-      ord_output <- rbind(ord_output, temp_output_ord)
-      if(i == length(cv_data$mod_select_ord)) {
-        break
-      } else {
-        next
-      }
-    }
-    best_model_ord <- parse_joined_model(cv_data$ord_models[[select_idx_ord]])
-    mean_spec_ord <- best_model_ord[1]
-    noise_spec_ord <- best_model_ord[2]
-    # main model params
-    best_params_ord <- cv_data$param_list_ord[[i]][[select_idx_ord]][,1]
-    param_names_ord <- names(best_params_ord)
-    temp_output_ord <- cbind(var_ord,
-                             type_ord,
-                             mean_spec_ord,
-                             noise_spec_ord,
-                             param_names_ord,
-                             best_params_ord)
-    ord_output <- rbind(ord_output, temp_output_ord)
+  if(length(cv_data$mod_select_ord) != 0) {
+       for(i in 1:length(cv_data$mod_select_ord)) {
+            var_ord <- variables[i]
+            type_ord <- 'Ord'
+            select_idx_ord <- which(cv_data$mod_select_ord[[i]]$model_rank == 1)
+            if(length(select_idx_ord) == 0) {
+                 print(paste0('Variable ', var_ord, ' yielded no model selection.'))
+                 mean_spec_ord <- NA
+                 noise_spec_ord <- NA
+                 param_names_ord <- NA
+                 best_params_ord <- NA
+                 temp_output_ord <- cbind(var_ord,
+                                          type_ord,
+                                          mean_spec_ord,
+                                          noise_spec_ord,
+                                          param_names_ord,
+                                          best_params_ord)
+                 ord_output <- rbind(ord_output, temp_output_ord)
+                 if(i == length(cv_data$mod_select_ord)) {
+                      break
+                 } else {
+                      next
+                 }
+            }
+            best_model_ord <- parse_joined_model(cv_data$ord_models[[select_idx_ord]])
+            mean_spec_ord <- best_model_ord[1]
+            noise_spec_ord <- best_model_ord[2]
+            # main model params
+            best_params_ord <- cv_data$param_list_ord[[i]][[select_idx_ord]][,1]
+            param_names_ord <- names(best_params_ord)
+            temp_output_ord <- cbind(var_ord,
+                                     type_ord,
+                                     mean_spec_ord,
+                                     noise_spec_ord,
+                                     param_names_ord,
+                                     best_params_ord)
+            ord_output <- rbind(ord_output, temp_output_ord)
+       }
   }
-  
+
   # Extract continuous model parameters
   cont_output <- NULL
-  for(j in 1:length(cv_data$mod_select_cont)) {
-    var_cont <- variables[j+(length(cv_data$mod_select_ord))]
-    type_cont <- 'Cont'
-    select_idx_cont <- which(cv_data$mod_select_cont[[j]]$model_rank == 1)
-    if(length(select_idx_cont) == 0) {
-      print(paste0('Variable ', var_cont, ' yielded no model selection.'))
-      mean_spec_cont <- NA
-      noise_spec_cont <- NA
-      param_names_cont <- NA
-      best_params_cont <- NA
-      temp_output_cont <- cbind(var_cont,
-                                type_cont,
-                                mean_spec_cont,
-                                noise_spec_cont,
-                                param_names_cont,
-                                best_params_cont)
-      cont_output <- rbind(cont_output, temp_output_cont)
-      if(i == length(cv_data$mod_select_cont)) {
-        break
-      } else {
-        next
-      }
-    }
-    best_model_cont <- parse_joined_model(cv_data$cont_models[[select_idx_cont]])
-    mean_spec_cont <- best_model_cont[1]
-    noise_spec_cont <- best_model_cont[2]
-    # main model params
-    best_params_cont <- cv_data$param_list_cont[[j]][[select_idx_cont]][,1]
-    param_names_cont <- names(best_params_cont)
-    temp_output_cont <- cbind(var_cont,
-                              type_cont,
-                              mean_spec_cont,
-                              noise_spec_cont,
-                              param_names_cont,
-                              best_params_cont)
-    cont_output <- rbind(cont_output, temp_output_cont)
+  if(length(cv_data$mod_select_cont) != 0) {
+       for(j in 1:length(cv_data$mod_select_cont)) {
+            var_cont <- variables[j+(length(cv_data$mod_select_ord))]
+            type_cont <- 'Cont'
+            select_idx_cont <- which(cv_data$mod_select_cont[[j]]$model_rank == 1)
+            if(length(select_idx_cont) == 0) {
+                 print(paste0('Variable ', var_cont, ' yielded no model selection.'))
+                 mean_spec_cont <- NA
+                 noise_spec_cont <- NA
+                 param_names_cont <- NA
+                 best_params_cont <- NA
+                 temp_output_cont <- cbind(var_cont,
+                                           type_cont,
+                                           mean_spec_cont,
+                                           noise_spec_cont,
+                                           param_names_cont,
+                                           best_params_cont)
+                 cont_output <- rbind(cont_output, temp_output_cont)
+                 if(i == length(cv_data$mod_select_cont)) {
+                      break
+                 } else {
+                      next
+                 }
+            }
+            best_model_cont <- parse_joined_model(cv_data$cont_models[[select_idx_cont]])
+            mean_spec_cont <- best_model_cont[1]
+            noise_spec_cont <- best_model_cont[2]
+            # main model params
+            best_params_cont <- cv_data$param_list_cont[[j]][[select_idx_cont]][,1]
+            param_names_cont <- names(best_params_cont)
+            temp_output_cont <- cbind(var_cont,
+                                      type_cont,
+                                      mean_spec_cont,
+                                      noise_spec_cont,
+                                      param_names_cont,
+                                      best_params_cont)
+            cont_output <- rbind(cont_output, temp_output_cont)
+       }
   }
-  
+
   final_output <- rbind(ord_output, cont_output)
   rownames(final_output) <- NULL
   colnames(final_output) <- c('var',
@@ -1187,7 +1191,7 @@ get_best_univariate_params <- function(data_dir,
                               'params',
                               'param_val')
   final_output <- as.data.frame(final_output,stringsAsFactors=FALSE)
-  
+
   if(!is.numeric(final_output$param_val)) {
     final_output$param_val <- as.numeric(final_output$param_val)
   }
@@ -1200,7 +1204,7 @@ get_best_univariate_params <- function(data_dir,
                                    paste0(analysis_name,
                                           '_univariate_model_parameters.rds')))
   }
-  
+
   return(final_output)
 }
 

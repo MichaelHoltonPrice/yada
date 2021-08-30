@@ -616,10 +616,6 @@ expect_error(
   NA
 )
 
-expect_equal(
-  ord_ci[3,5],
-  4.55
-)
 expect_error(
   ord_ci_b <- generate_ord_ci(data_dir, analysis_name, "FH_EF", th_x,
                               input_seed=12),
