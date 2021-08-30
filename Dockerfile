@@ -30,15 +30,11 @@ RUN apt-get update && \
     apt-get install -y pandoc && \
     apt-get clean
 
-# Clone the dev version of the yada repository (TODO: update to non-dev when
-# ready)
-RUN git clone --branch dev https://github.com/MichaelHoltonPrice/yada
+# Clone the latest version of the yada repository
+RUN git clone https://github.com/MichaelHoltonPrice/yada
 
 # Set the working directory to the code directory
 WORKDIR /yada
 
 # Install yada by running the install_yada.R script
 RUN Rscript install_yada.R
-
-# install python dependencies
-#RUN pip3 install -r requirements.txt
