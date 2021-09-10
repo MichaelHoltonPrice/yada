@@ -1684,11 +1684,14 @@ sample_x_posterior <- function(y,
   }
 
   xlo <- median(xmin_vect)
-  if(xlo < 0) {
+  if (xlo < 0 | is.na(xlo)) {
     xlo <- 0
   }
 
   xhi <- median(xmax_vect)
+  if (is.na(xhi)) {
+    xhi <- 0.001
+  }
   if(xhi <= xlo) {
     if (xlo == 0) {
       xhi <- 1
@@ -1816,7 +1819,7 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
   # TODO: add support for trapezoidal integration
   if (normalize) {
     dx <- xcalc[2] - xcalc[1]
-    if(!all.equal(diff(xcalc),rep(dx,length(xcalc)-1))) {
+    if(!isTRUE(all.equal(diff(xcalc),rep(dx,length(xcalc)-1)))) {
       stop('xcalc must be evenly spaced')
     }
     p_x <- p_xy / sum(p_xy) / dx
