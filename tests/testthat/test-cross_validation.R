@@ -1078,3 +1078,65 @@ expect_equal(
 
 # TODO: add tests for crossval_multivariate_models. We may adopt a different
 #       approach in the near future, so wait to make the tests.
+
+
+# Test calc_aic
+expect_error(
+  calc_aic(0, eta),
+  "k should be greater than 0"
+)
+
+expect_error(
+  calc_aic(-5, eta),
+  "k should be greater than 0"
+)
+
+expect_error (
+  calc_aic(1.5, eta),
+  "k should be an integer"
+)
+
+## aic = (2*eta) + (2*k), where eta is the negative log-likelihood
+expect_equal(
+  calc_aic(2, 1520),
+  (2*1520) + (2*2)
+)
+
+# Test build_aic_output
+analysis_name <- 'US-analysis'
+var_name <- 'FH_EF'
+expect_error(
+  aic_FH_EF <- build_aic_output(data_dir,analysis_name,var_name,format_df=T),
+  NA
+)
+
+expect_equal(
+  aic_FH_EF$model[which(aic_FH_EF$rank==1)],
+  "lin_ord_const"
+)
+
+expect_equal(
+  aic_FH_EF$model[which(aic_FH_EF$rank==3)],
+  "log_ord_const"
+)
+
+expect_equal(
+  dim(aic_FH_EF),
+  c(6,3)
+)
+
+var_name <- 'FDL'
+expect_error(
+  aic_FDL <- build_aic_output(data_dir, analysis_name, var_name, format_df=F),
+  NA
+)
+
+expect_equal(
+  length(aic_FDL),
+  2
+)
+
+expect_equal(
+  min(unlist(aic_FDL)),
+  344.602
+)

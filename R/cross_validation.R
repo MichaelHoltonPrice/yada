@@ -1768,3 +1768,126 @@ crossval_multivariate_models <- function(data_dir, analysis_name, fold) {
   return(list(eta_vect_cindep=eta_vect_cindep,
               eta_vect_cdep=eta_vect_cdep))
 }
+
+#' @title Calculate AIC 
+#' 
+#' @description Function that calculates the Akaike's Information Criterion 
+#' given the number of parameters (k) and negative log-likelihood (eta)
+#' 
+#' @param k Number of parameters in model
+#' @param eta Negative log-likelihood
+#' 
+#' @return AIC value
+#' 
+#' @export
+
+calc_aic <- function(k, eta) {
+  if (k%%1 != 0) {
+    stop('k should be an integer')
+  }
+  if (k <= 0) {
+    stop('k should be greater than 0')
+  }
+  
+  aic <- (2*eta) + (2*k)
+  return(aic)
+}
+
+#' @title Model selection using AIC
+#'
+#' @description
+#' A wrapper function that imports all models given a variable, 
+#' calculates the AIC for each model, and stores it in a list or dataframe. 
+#'
+#' @param data_dir Directory in which the model files are stored
+#' @param analysis_name Unique ID for the given analysis
+#' @param var_name Character string of the variable name for 
+#' searching the directory
+#' @param format_df Logical on whether the calculated AICs should be 
+#' formatted as a dataframe. Default is format_df=FALSE, which maintains 
+#' a list structure.
+#' @param save_file Logical on whether the calculated AIC should be saved in
+#' the directory as an .RDS file. Default is save_file=F.
+#'
+#' @return List or dataframe of the calculated AICs.
+#'
+#' @export
+
+build_aic_output <- function(data_dir, analysis_name, var_name,
+                           format_df=F, save_file=F) {
+  # Check for solutiony files with var_name and import into list
+  var_files <- intersect(list.files(path=data_dir,
+                                    pattern=paste0('solutiony_',analysis_name)),
+                         list.files(path=data_dir,pattern=var_name))
+  fold_files <- grep('fold', var_files)
+  sol_files <- var_files[-fold_files]
+  
+  # Load problem file, initialize values
+  problem <- readRDS(build_file_path(data_dir, analysis_name,
+                                     "main_problem", var_name=var_name))
+  var_idx <- which(problem$var_names == var_name)
+  keep <- !is.na(problem$Y[var_idx,])
+  x <- problem$x[keep]
+  y <- problem$Y[var_idx,keep]
+  
+  # Initialize empty list
+  aic_list <- list()
+  
+  for (j in 1:length(sol_files)) {
+    model <- readRDS(paste0(data_dir,'/',sol_files[j]))
+    mean_noise <- strsplit(sol_files[j],paste0(var_name,'_|.rds'))[[1]][2]
+    if (class(model) == 'try-error') {
+      aic_list[mean_noise] <- NA
+    } else {
+      J <- get_J(model$mod_spec)
+      K <- get_K(model$mod_spec)
+      th_y <- model$th_y
+      mod_spec <- model$mod_spec
+      
+      if (J+K > 1) {
+        calc_data <- prep_for_neg_log_lik_multivariate(x,
+                                                       y,
+                                                       mod_spec,
+                                                       remove_log_ord=TRUE)
+        eta <- calc_neg_log_lik_multivariate(th_y, calc_data)
+      } else {
+        if (J == 1) {
+          eta <- calc_neg_log_lik_ord(th_y, x, y, mod_spec)
+        }
+        if (K == 1) {
+          eta <- calc_neg_log_lik_cont(th_y, x, y, mod_spec)
+        }
+      }
+      
+      # Calculate AIC
+      aic_list[mean_noise] <- calc_aic(length(th_y), eta)
+    }
+  }
+  
+  if (format_df) {
+    aic_df <- matrix(NA, nrow=length(aic_list), ncol=3)
+    
+    for (i in 1:nrow(aic_df)) {
+      aic_df[i,1] <- names(aic_list[i])
+      aic_df[i,2] <- aic_list[[i]]
+    }
+    
+    aic_df <- as.data.frame(aic_df)
+    colnames(aic_df) <- c('model', 'AIC', 'rank')
+    aic_df$rank <- floor(rank(aic_df$AIC, na.last='keep'))
+    aic_out <- aic_df
+  } else {
+    aic_out <- aic_list
+  }
+  
+  if (save_file) {
+    save_path <- file.path(data_dir, paste0('aic_',analysis_name,'_',
+                                            var_name,'.rds'))
+    saveRDS(aic_out, save_path)
+  }
+  
+  return(aic_out)
+}
+
+
+
