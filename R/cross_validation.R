@@ -1327,8 +1327,11 @@ load_best_univariate_model <- function(data_dir,
   if(is_ord) {
     j <- ind_var
     ind_best_model <- which(cv_data$mod_select_ord[[j]]$model_rank == 1)
-    if (length(ind_best_model) != 1) {
+    if (length(ind_best_model) > 1) {
       stop("There should be exactly one best model")
+    }
+    if (length(ind_best_model) == 0) {
+      stop("There is no best model to select")
     }
     mean_noise <- parse_joined_model(cv_data$ord_models[[ind_best_model]])
     mean_spec <- mean_noise[1]
@@ -1344,8 +1347,11 @@ load_best_univariate_model <- function(data_dir,
   } else {
     k <- ind_var - problem$mod_spec$J
     ind_best_model <- which(cv_data$mod_select_cont[[k]]$model_rank == 1)
-    if (length(ind_best_model) != 1) {
+    if (length(ind_best_model) > 1) {
       stop("There should be exactly one best model")
+    }
+    if (length(ind_best_model) == 0) {
+      stop("There is no best model to select")
     }
     mean_noise <- parse_joined_model(cv_data$cont_models[[ind_best_model]])
     mean_spec <- mean_noise[1]

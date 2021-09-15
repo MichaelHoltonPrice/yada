@@ -1684,11 +1684,14 @@ sample_x_posterior <- function(y,
   }
 
   xlo <- median(xmin_vect)
-  if(xlo < 0) {
+  if(xlo < 0 | is.na(xlo)) {
     xlo <- 0
   }
 
   xhi <- median(xmax_vect)
+  if(is.na(xhi)) {
+    xhi <- 0.001
+  }
   if(xhi <= xlo) {
     if (xlo == 0) {
       xhi <- 1
