@@ -3954,6 +3954,11 @@ expect_equal(
 )
 
 expect_error(
+  x_post_obj <- calc_x_posterior(y,th_x,th_y_sim,mod_spec,xcalc=c(1,2,4)),
+  "xcalc must be evenly spaced if it is input and normalize is TRUE"
+)
+
+expect_error(
   x_post_obj <- calc_x_posterior(y,th_x,th_y_sim,mod_spec,xcalc=1:4, seed=103),
   "A seed should not be provided if xcalc is provided"
 )

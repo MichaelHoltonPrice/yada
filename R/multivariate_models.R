@@ -793,7 +793,7 @@ remove_missing_variables <- function(y0,mod_spec0) {
   }
 
   y <- y0[keep]  # keep only non-NA values
-  
+
   # Initialize mod_spec
   mod_spec <- mod_spec0
   mod_spec$J <- J
@@ -810,7 +810,7 @@ remove_missing_variables <- function(y0,mod_spec0) {
     mod_spec$cdep_groups <- NULL
   }
 
-  
+
   if(mod_spec$cdep_spec == 'dep') {
     groups0         <- mod_spec0$cdep_groups
     groups0_reduced <- mod_spec0$cdep_groups[keep]
@@ -1161,7 +1161,7 @@ calc_neg_log_lik_vect_multivariate_chunk_outer <-
       neg_log_lik_vect[preceding + (1:fold_length)]
     preceding <- preceding + fold_length
   }
-  
+
   return(neg_log_lik_vect_out)
 }
 
@@ -1183,7 +1183,7 @@ calc_neg_log_lik_vect_multivariate_chunk_inner <- function(th_y,calc_data) {
 
   N <- length(calc_data)
   neg_log_lik_vect <- rep(NA,N)
-  
+
   for(n in 1:N) {
     neg_log_lik_vect[n] <-
       calc_neg_log_lik_scalar_multivariate(th_y,calc_data[[n]])
@@ -1604,7 +1604,7 @@ fit_multivariate <- function(x,Y,mod_spec,
   # Extract the fit (changing back to the constrained representation)
   th_y_bar <- th_y_bar0 + hjk_output$par * th_y_bar_scale
   th_y <- param_unconstr_to_constr(th_y_bar, tf_cat_vect)
-  
+
   return(list(th_y=th_y,
               th_y_bar=th_y_bar,
               hjk_output=hjk_output,
@@ -1684,14 +1684,11 @@ sample_x_posterior <- function(y,
   }
 
   xlo <- median(xmin_vect)
-  if (xlo < 0 | is.na(xlo)) {
+  if(xlo < 0) {
     xlo <- 0
   }
 
   xhi <- median(xmax_vect)
-  if (is.na(xhi)) {
-    xhi <- 0.001
-  }
   if(xhi <= xlo) {
     if (xlo == 0) {
       xhi <- 1
@@ -1762,6 +1759,27 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
   if ( (length(xcalc) > 0) && !is.na(seed) ) {
     stop("A seed should not be provided if xcalc is provided")
   }
+
+  # If xcalc is input and normalize is TRUE, xcalc must be evenly spaced
+  # TODO: add support for trapezoidal integration
+  if ( (length(xcalc) > 0) && normalize) {
+    dx <- xcalc[2] - xcalc[1]
+    equality_check <- all.equal(diff(xcalc), rep(dx,length(xcalc)-1))
+    if (class(equality_check) == "character") {
+      # all.equal return a character object if the check fails
+      bad_xcalc <- TRUE
+    } else {
+      # equality_check is logical
+      bad_xcalc <- !equality_check
+    }
+    if (bad_xcalc) {
+      stop('xcalc must be evenly spaced if it is input and normalize is TRUE')
+    }
+  }
+
+  if ( (length(xcalc) > 0) && !is.na(seed) ) {
+    stop("A seed should not be provided if xcalc is provided")
+  }
   # If xcalc is not provided, determine it adaptively
   if (length(xcalc) == 0) {
     # Sample 1000 times. Sensible sampling parameters are determined adaptively
@@ -1788,6 +1806,7 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
 
     # Use 1000 samples for xcalc on the range xmin to xmax
     xcalc <- seq(xmin,xmax,len=1000)
+    dx <- (xmax-xmin)/1000
   } else {
     x_samp <- c()
   }
@@ -1815,13 +1834,8 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
     p_xy <- calc_joint(xcalc,y,th_x,th_y,mod_spec)
   }
 
-  # xcalc must be evenly spaced for normalization
-  # TODO: add support for trapezoidal integration
   if (normalize) {
-    dx <- xcalc[2] - xcalc[1]
-    if(!isTRUE(all.equal(diff(xcalc),rep(dx,length(xcalc)-1)))) {
-      stop('xcalc must be evenly spaced')
-    }
+    # This point should not be reached unless xcalc is evenly spaced
     p_x <- p_xy / sum(p_xy) / dx
   } else {
     p_x <- p_xy
@@ -1871,7 +1885,7 @@ calc_joint <- function(xcalc,y,th_x,th_y,mod_spec) {
   log_lik_vect[!ind_fix] <- log_lik_vect0
 
   log_prior_vect <- log(calc_x_density(xcalc,th_x))
-  
+
   log_joint_vect <- log_lik_vect + log_prior_vect
 
   fv <- exp(log_joint_vect)
