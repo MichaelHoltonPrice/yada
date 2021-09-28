@@ -1878,6 +1878,7 @@ build_aic_output <- function(data_dir, analysis_name, var_name,
     
     aic_df <- as.data.frame(aic_df)
     colnames(aic_df) <- c('model', 'AIC', 'rank')
+    aic_df$AIC <- as.numeric(aic_df$AIC)
     aic_df$rank <- floor(rank(aic_df$AIC, na.last='keep'))
     aic_out <- aic_df
   } else {
