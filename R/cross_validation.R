@@ -1819,8 +1819,12 @@ build_aic_output <- function(data_dir, analysis_name, var_name,
   var_files <- intersect(list.files(path=data_dir,
                                     pattern=paste0('solutiony_',analysis_name)),
                          list.files(path=data_dir,pattern=var_name))
-  fold_files <- grep('fold', var_files)
-  sol_files <- var_files[-fold_files]
+  fold_files <- grep('fold', var_files)  # find fold files
+  if (length(fold_files) != 0) {
+    sol_files <- var_files[-fold_files]  # remove fold files
+  } else {
+    sol_files <- var_files
+  }
   
   # Load problem file, initialize values
   problem <- readRDS(build_file_path(data_dir, analysis_name,
