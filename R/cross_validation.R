@@ -523,18 +523,21 @@ crossval_univariate_models <- function(data_dir,
 
       # Reject pow_law_ord models for which the scaling exponent term is too small
       # (relative to the input scale_exp_min). This supersedes failed fits.
-      model1_failures <- which(param_list_ord[[j]][[1]][1,] < scale_exp_min)
-      if(any(model1_failures)) {
-        selection_df$reject[1] <- T
-        selection_df$reject_reason[1] <- 'Scaling exponent'
+      if(any( dim(param_list_ord[[j]][[1]]) != c(0,0)) ) {
+        model1_failures <- which(param_list_ord[[j]][[1]][1,] < scale_exp_min)
+        if(any(model1_failures)) {
+          selection_df$reject[1] <- T
+          selection_df$reject_reason[1] <- 'Scaling exponent'
+        }
       }
 
-      model2_failures <- which(param_list_ord[[j]][[2]][1,] < scale_exp_min)
-      if(any(model2_failures)) {
-        selection_df$reject[2] <- T
-        selection_df$reject_reason[2] <- 'Scaling exponent'
+      if(any( dim(param_list_ord[[j]][[2]]) != c(0,0)) ) {
+        model2_failures <- which(param_list_ord[[j]][[2]][1,] < scale_exp_min)
+        if(any(model2_failures)) {
+          selection_df$reject[2] <- T
+          selection_df$reject_reason[2] <- 'Scaling exponent'
+        }
       }
-
       # Reject heteroskedastic models for which the intercept term is too large.
       for(m in c(2,4,6)) {
         if(!selection_df$reject[m]) {

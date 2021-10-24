@@ -1822,7 +1822,7 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
     for (j in 1:J) {
       if (mod_spec$mean_spec[j] == "log_ord") {
         if (xcalc[1] == 0) {
-          if (y[j] > 0) {
+          if (y[j] > 0 & !is.na(y[j])) {
             fix_x <- TRUE
           }
         }
@@ -1869,7 +1869,7 @@ calc_joint <- function(xcalc,y,th_x,th_y,mod_spec) {
   if (J > 0) {
     for (j in 1:J) {
       if (mod_spec$mean_spec[j] == "log_ord") {
-        if (y[j] > 0) {
+        if (y[j] > 0 & !is.na(y[j])) {
           ind_fix[which(xcalc == 0)] <- TRUE
         }
       }
@@ -1881,7 +1881,7 @@ calc_joint <- function(xcalc,y,th_x,th_y,mod_spec) {
 
   # Since calc_data is being used for posterior inference, do not use
   # remove_log_ord=TRUE (the default is FALSE)
-  calc_data <- prep_for_neg_log_lik_multivariate(xcalc,Y,mod_spec)
+  calc_data <- prep_for_neg_log_lik_multivariate(xcalc,Y,mod_spec,no_missing_var=F)
   # the vector of log-likelihoods
   log_lik_vect0 <- -calc_neg_log_lik_vect_multivariate(th_y,calc_data)
   log_lik_vect <- rep(Inf, length(xcalc0))
