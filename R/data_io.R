@@ -158,7 +158,7 @@ apply_cat_spec <- function(v_str,cat_spec) {
       if (!(str_cat %in% names(cat_map))) {
         stop(paste0(str_cat," not found in category mapping"))
       }
-      v_int[n] <- cat_map[[str_cat]]
+      v_int[n] <- cat_map[[which(names(cat_map)==str_cat)]]
     }
   }
   return(v_int)
