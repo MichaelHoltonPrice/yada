@@ -56,6 +56,11 @@ expect_equal(
   c(2,1,2,0,NA,0,3,2)
 )
 
+expect_equal(
+  apply_cat_spec(7,"{0 1 2} 3 4 5 6 7"),
+  5
+)
+
 # Test build_lr_var
 expect_error(
   build_lr_var("var1","middle","_L"),
