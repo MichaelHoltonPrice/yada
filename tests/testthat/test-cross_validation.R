@@ -235,7 +235,7 @@ expect_equal(
   2
 )
 
-# Test crossval_univariate_problems
+# Test evaluate_univariate_problems
 solutiony_cont_pow_law_const_fold2 <-
   readRDS(build_file_path(data_dir,
                           analysis_name,
@@ -250,8 +250,15 @@ saveRDS(solutiony_cont_pow_law_const_fold2,
                   paste0('solutiony_',
                          analysis_name,
                          '_fold3_cont_k_1_FDL_pow_law_const.rds')))
+ord_models <- c('pow_law_ord_const','pow_law_ord_lin_pos_int',
+                'log_ord_const','log_ord_lin_pos_int',
+                'lin_ord_const','lin_ord_lin_pos_int')
+cont_models <- c('pow_law_const','pow_law_lin_pos_int')
+
 expect_error(
-  crossval_univariate_models(data_dir, analysis_name, 0.05, 0.1, 5),
+  evaluate_univariate_models(data_dir, analysis_name, 'cv',
+                             ord_models, cont_models,
+                             0.05, 0.1, 5),
   "All variables should have the same number of folds"
 )
 success <- file.remove(file.path(data_dir,
@@ -261,18 +268,26 @@ success <- file.remove(file.path(data_dir,
                                         '_const.rds')))
 # TODO: consider changing input data so that NaN is not produced for model 4
 #       of ordinal variable
+# Test eval_type == 'cv'
 expect_warning(
-  cv_data <- crossval_univariate_models(data_dir, analysis_name, 0.05, 0.1, 5),
+  cv_data <- evaluate_univariate_models(data_dir, analysis_name, 'cv',
+                                        ord_models, cont_models,
+                                        0.05, 0.1, 5),
   'NaNs produced'
 )
 
 expect_equal(
-  dim(cv_data$cv_array_ord),
+  cv_data$eval_type,
+  "cv"
+)
+
+expect_equal(
+  dim(cv_data$ord_array),
   c(6, 2, 1)
 )
 
 expect_equal(
-  dim(cv_data$cv_array_cont),
+  dim(cv_data$cont_array),
   c(2, 2, 1)
 )
 
@@ -298,8 +313,9 @@ expect_equal(
 
 expect_equal(
   names(cv_data),
-  c("cv_array_ord",
-    "cv_array_cont",
+  c("eval_type",
+    "ord_array",
+    "cont_array",
     "num_folds",
     "param_list_ord",
     "param_list_cont",
@@ -314,9 +330,83 @@ expect_equal(
     "beta2_max")
 )
 
+# Test eval_type == 'aic'
+expect_error(
+  aic_data <- evaluate_univariate_models(data_dir, analysis_name, 'aic',
+                                         ord_models, cont_models, 
+                                         0.05, 0.01, 5, save_file=F),
+  NA
+)
+
+expect_equal(
+  aic_data$eval_type,
+  "aic"
+)
+
+expect_equal(
+  dim(aic_data$ord_array),
+  c(6, 1, 1)
+)
+
+expect_equal(
+  dim(aic_data$cont_array),
+  c(2, 1, 1)
+)
+
+expect_equal(
+  length(aic_data$ord_models),
+  6
+)
+
+expect_equal(
+  length(aic_data$cont_models),
+  2
+)
+
+expect_equal(
+  dim(aic_data$mod_select_ord[[1]]),
+  c(6,6)
+)
+
+expect_equal(
+  dim(aic_data$mod_select_cont[[1]]),
+  c(2,6)
+)
+
+expect_equal(
+  names(aic_data),
+  c("eval_type",
+    "ord_array",
+    "cont_array",
+    "num_folds",
+    "param_list_ord",
+    "param_list_cont",
+    "num_obs_vect",
+    "can_do_log_ord",
+    "ord_models",
+    "cont_models",
+    "mod_select_ord",
+    "mod_select_cont",
+    "cand_tol",
+    "scale_exp_min",
+    "beta2_max")
+)
+
+
 # Test write_matrix
 expect_error(
-  write_matrix(cv_data$cv_array_ord,
+  write_matrix(cv_data$ord_array,
+               file.path(data_dir,
+                         'US-analysis_ord_j_1_FH_EF.Rmd')),
+  NA
+)
+expect_true(
+  file.exists(file.path(data_dir,'US-analysis_ord_j_1_FH_EF.Rmd'))
+)
+success <- file.remove(file.path(data_dir,
+                                 'US-analysis_ord_j_1_FH_EF.Rmd'))
+expect_error(
+  write_matrix(aic_data$ord_array,
                file.path(data_dir,
                          'US-analysis_ord_j_1_FH_EF.Rmd')),
   NA
@@ -328,7 +418,16 @@ success <- file.remove(file.path(data_dir,
                                  'US-analysis_ord_j_1_FH_EF.Rmd'))
 
 expect_error(
-  write_matrix(cv_data$cv_array_cont,
+  write_matrix(cv_data$cont_array,
+               file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd')),
+  NA
+)
+expect_true(
+  file.exists(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
+)
+success <- file.remove(file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd'))
+expect_error(
+  write_matrix(aic_data$cont_array,
                file.path(data_dir,'US-analysis_cont_k_1_FDL.Rmd')),
   NA
 )
@@ -518,11 +617,11 @@ expect_equal(
   load_best_univariate_model(data_dir, analysis_name, "FH_EF"),
   list(
     th_y     = params$param_val[params$var == "FH_EF"],
-    mod_spec = list(J=1,
-                    K=0,
-                    mean_spec=params$mean_spec[1],
+    mod_spec = list(mean_spec=params$mean_spec[1],
                     noise_spec=params$noise_spec[1],
-                    M=6)
+                    J=1,
+                    M=6,
+                    cdep_spec="indep")
   )
 )
 
@@ -535,14 +634,15 @@ y <- y[ind_keep]
 expect_equal(
   load_best_univariate_model(data_dir, analysis_name, "FH_EF", load_data=T),
   list(
-    th_y     = params$param_val[params$var == "FH_EF"],
-    mod_spec = list(J=1,
-                    K=0,
-                    mean_spec=params$mean_spec[1],
-                    noise_spec=params$noise_spec[1],
-                    M=6),
-    x        = x,
-    y        = y
+    th_y       = params$param_val[params$var == "FH_EF"],
+    mod_spec   = list(mean_spec=params$mean_spec[1],
+                      noise_spec=params$noise_spec[1],
+                      J=1,
+                      M=6,
+                      cdep_spec="indep"),
+    x          = x,
+    y          = y,
+    mean_noise = c("log_ord","const")
   )
 )
 
@@ -550,10 +650,10 @@ expect_equal(
   load_best_univariate_model(data_dir, analysis_name, "FDL"),
   list(
     th_y     = params$param_val[params$var == "FDL"],
-    mod_spec = list(J=0,
+    mod_spec = list(mean_spec=params$mean_spec[12],
+                    noise_spec=params$noise_spec[12],
                     K=1,
-                    mean_spec=params$mean_spec[12],
-                    noise_spec=params$noise_spec[12])
+                    cdep_spec="indep")
   )
 )
 
@@ -567,12 +667,13 @@ expect_equal(
   load_best_univariate_model(data_dir, analysis_name, "FDL", load_data=T),
   list(
     th_y     = params$param_val[params$var == "FDL"],
-    mod_spec = list(J=0,
+    mod_spec = list(mean_spec=params$mean_spec[12],
+                    noise_spec=params$noise_spec[12],
                     K=1,
-                    mean_spec=params$mean_spec[12],
-                    noise_spec=params$noise_spec[12]),
+                    cdep_spec="indep"),
     x        = x,
-    y        = y
+    y        = y,
+    mean_noise = c("pow_law","lin_pos_int")
   )
 )
 
@@ -675,7 +776,7 @@ success <- file.remove(file.path(data_dir,paste0('train_',
 # Create and fit simulated data to test the functioning of the standard error
 # calculation for build_cindep_model. Do so with a full simulation of the
 # cross validation steps.
-# TODO: check that the same convention is used for th_x throught yada
+# TODO: check that the same convention is used for th_x throughout yada
 # TODO: consider making a stand-alone function for the Hessian calculation.
 analysis_name <- "hessian"
 th_x <- list(fit_type="uniform",xmin=0,xmax=2)

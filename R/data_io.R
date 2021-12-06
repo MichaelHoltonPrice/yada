@@ -1148,8 +1148,10 @@ build_file_path <- function(data_dir,analysis_name,file_type,
       file_name <- paste0(file_name,"_fold",fold)
     }
     file_name <- paste0(file_name,".rds")
-  } else if (file_type ==  "cv_data") {
-    file_name <- paste0("cv_data_univariate_",analysis_name,".rds")
+  } else if (file_type ==  "eval_data") {
+    file_name <- paste0("eval_data_univariate_",analysis_name,".rds")
+  } else if (file_type == "aic") {
+    file_name <- paste0("aic_",analysis_name,"_",var_name,".rds")
   } else if (file_type == "mcp_inputs") {
     file_name <- paste0("mcp_inputs_",analysis_name)
     if (!is.na(fold)) {
@@ -1514,6 +1516,31 @@ solve_cont_problem <- function(data_dir, analysis_name, cont_prob) {
             file_path)
     return(T)
   }
+}
+
+#' @title Build model vector
+#' 
+#' @description A function to build a vector of mean-noise model specifications
+#' to be used in the function [evaluate_univariate_models]. This function 
+#' creates all possible mean-noise combinations, resulting in a vector of 
+#' length = length(mean_models) x length(noise_models)
+#' 
+#' @param mean_models A vector with the mean model names
+#' @param noise_models A vector with the noise model names
+#' 
+#' @return A vector with all possible mean-noise model combinations
+#' 
+#' @export
+
+build_model_vec <- function(mean_models, noise_models) {
+  model_vec <- c()
+  for(mean_model in mean_models) {
+    for(noise_model in noise_models) {
+      model_vec <- c(model_vec, paste0(mean_model,"_",noise_model))
+    }
+  }
+  
+  return(model_vec)
 }
 
 #' @title Clear all the files in the temporary directory

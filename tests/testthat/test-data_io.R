@@ -898,8 +898,8 @@ expect_equal(
 )
 
 expect_equal(
-  build_file_path(data_dir,analysis_name,"cv_data"),
-  file.path(tempdir(),"cv_data_univariate_US-analysis.rds")
+  build_file_path(data_dir,analysis_name,"eval_data"),
+  file.path(tempdir(),"eval_data_univariate_US-analysis.rds")
 )
 
 expect_equal(
@@ -1210,3 +1210,18 @@ expect_equal(
   solve_cont_problem(data_dir, analysis_name, cont_problems[[1]]),
   TRUE
 )
+
+# Test yada::build_model_vec
+expect_equal(
+  build_model_vec(c('pow_law_ord','log_ord'),'const'),
+  c('pow_law_ord_const','log_ord_const')
+)
+
+expect_equal(
+  build_model_vec('pow_law',c('const','lin_pos_int')),
+  c('pow_law_const','pow_law_lin_pos_int')
+)
+
+
+
+

@@ -22,8 +22,8 @@ load_best_univariate_model(
 
 \item{fold}{Fold number. If NA, pull from main solution.}
 
-\item{load_data}{Whether to also load the data vector (x and y) (default:
-FALSE)}
+\item{load_data}{Whether to also load the data vector (x and y), and 
+mean-noise specifications (default: FALSE)}
 }
 \value{
 A list with the parameter vector (th_y), model specification
