@@ -1177,8 +1177,8 @@ expect_equal(
   model$th_y_bar_se[6]
 )
 
-# TODO: add tests for crossval_multivariate_models. We may adopt a different
-#       approach in the near future, so wait to make the tests.
+# TODO: Test calc_eta_multivariate
+# TODO: Test evaluate_multivariate_models
 
 
 # Test calc_aic

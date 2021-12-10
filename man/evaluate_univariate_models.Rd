@@ -12,7 +12,8 @@ evaluate_univariate_models(
   cont_models,
   cand_tol,
   scale_exp_min,
-  beta2_max
+  beta2_max,
+  save_file = T
 )
 }
 \arguments{
@@ -39,6 +40,9 @@ lie within cand_tol of each other. Model simplicity is then used as a
 
 \item{beta2_max}{The maximum acceptable value of beta2, the heteroskedastic
 noise parameter}
+
+\item{save_file}{Logical, whether to save the list to data_dir. 
+(Default is TRUE)}
 }
 \value{
 A list consisting of named elements that summarize the cross
