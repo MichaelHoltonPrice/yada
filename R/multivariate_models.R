@@ -1553,6 +1553,7 @@ sim_multivariate <- function(th_y,mod_spec,N=NA,th_x=NA,x=NA) {
 #' @param cindep_model A list specifying the conditionally independent model
 #'   (likely the output of build_cindep_model). cindep_model must contain
 #'   cindep_model$th_y_bar and cindep_model$th_y_bar_scale.
+#' @param save_file String containing the progress file name
 #'
 #' @return A list object containing  the best-fit parameter vector (th_y), and
 #'   the unconstrained best-fit parameter (th_y_bar), and the return object from
@@ -1566,7 +1567,7 @@ fit_multivariate <- function(x,Y,mod_spec,
 
   if (!is.na(save_file)) {
     if (file.exists(save_file)) {
-      stop("save_file already exists")
+      print("save_file already exists, starting from previous run")
     }
   }
 
@@ -1577,20 +1578,59 @@ fit_multivariate <- function(x,Y,mod_spec,
                                                 mod_spec,remove_log_ord=TRUE)
   tf_cat_vect = get_multivariate_transform_categories(mod_spec)
 
-  # Extract initialization variables from cindep_model
-  th_y_bar0      <- cindep_model$th_y_bar
-  th_y_bar_scale <- cindep_model$th_y_bar_se
+  # Initialize vectors if this is the first run
+  if (!file.exists(save_file)) {
+    # Extract initialization variables from cindep_model
+    th_y_bar0      <- cindep_model$th_y_bar
+    th_y_bar_scale <- cindep_model$th_y_bar_se
+    
+    # number of correlation terms
+    Nz <- get_z_length(mod_spec)
+    th_y_bar0 <- c(th_y_bar0, rep(0,Nz))
+    
+    # For the scale of the correlations terms, use the median of the other
+    # variables
+    th_y_bar_scale <- c(th_y_bar_scale, rep(median(th_y_bar_scale), Nz))
+    
+    # Set initial parameter vector to 0
+    param0 <- rep(0,length(th_y_bar0))
+    
+    # Set optimization leg to 1, meaning this is the first run
+    leg <- 1
+    
+  } else {
+    # Manipulate save_file to find all previous runs
+    n <- 1  # at least one leg already exists
+    split_file_list <- strsplit(save_file,"/|\\.")  # split save_file
+    data_dir <- split_file_list[[1]][1]  # extract data directory
+    file_name <- split_file_list[[1]][2]  # extract file name without extension
+    save_file_vec <- list.files(data_dir,file_name)  # all hjk files
+    
+    # Find the most recent save_file and import
+    if (length(grep("leg",save_file_vec)) > 0) {
+      max_leg <- max(grep("leg",save_file_vec))
+      save_file0 <- readRDS(paste0(data_dir,"/",file_name,"_leg",max_leg,".rds"))
+    } else {
+      max_leg <- 1
+      save_file0 <- readRDS(save_file)
+    }
+    
+    if (save_file0$leg != max_leg) {
+      stop("Most recent run file name does not match progress file records.")
+    }
+    leg <- n + max_leg  # new leg
+    
+    # Initialize values from previous run
+    param0 <- save_file0$param_best
+    th_y_bar0 <- save_file0$th_y_bar0
+    th_y_bar_scale <- save_file0$th_y_bar_scale
+    
+    # New save file, adding leg information
+    save_file <- paste0(data_dir,"/",file_name,"_leg",leg,".rds")
+  }
 
-  # number of correlation terms
-  Nz <- get_z_length(mod_spec)
-  th_y_bar0 <- c(th_y_bar0, rep(0,Nz))
-
-  # For the scale of the correlations terms, use the median of the other
-  # variables
-  th_y_bar_scale <- c(th_y_bar_scale, rep(median(th_y_bar_scale), Nz))
 
   # Solve the optimization problem
-  param0 <- rep(0,length(th_y_bar0))
   hjk_output <- dfoptim::hjk(param0,
                              hjk_nll_wrapper,
                              control=hjk_control,
@@ -1608,7 +1648,8 @@ fit_multivariate <- function(x,Y,mod_spec,
   return(list(th_y=th_y,
               th_y_bar=th_y_bar,
               hjk_output=hjk_output,
-              mod_spec=mod_spec))
+              mod_spec=mod_spec,
+              leg=leg))
 }
 
 #' @title Sample from the posterior density of x

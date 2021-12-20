@@ -23,6 +23,8 @@ fit_multivariate(
 \item{cindep_model}{A list specifying the conditionally independent model
 (likely the output of build_cindep_model). cindep_model must contain
 cindep_model$th_y_bar and cindep_model$th_y_bar_scale.}
+
+\item{save_file}{String containing the progress file name}
 }
 \value{
 A list object containing  the best-fit parameter vector (th_y), and
