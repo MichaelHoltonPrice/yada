@@ -898,6 +898,18 @@ evaluate_univariate_models <- function(data_dir,
     }
   }
   
+  if (J == 0) {
+    ord_array <- NA
+    param_list_ord <- NA
+    mod_select_ord <- NA
+    can_do_log_ord <- NA
+  }
+  if (K == 0) {
+    cont_array <- NA
+    param_list_cont <- NA
+    mod_select_cont <- NA
+  }
+  
   # Create, save, and return the output list
   eval_data <- list(
     eval_type       = eval_type,
