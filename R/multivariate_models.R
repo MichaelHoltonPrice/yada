@@ -1614,10 +1614,7 @@ fit_multivariate <- function(x,Y,mod_spec,
       max_leg <- 1
       save_file0 <- readRDS(save_file)
     }
-    
-    if (save_file0$leg != max_leg) {
-      stop("Most recent run file name does not match progress file records.")
-    }
+
     leg <- n + max_leg  # new leg
     
     # Initialize values from previous run
