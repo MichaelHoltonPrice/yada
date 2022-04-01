@@ -614,7 +614,7 @@ evaluate_univariate_models <- function(data_dir,
       selection_df$model_rank[ind_ok] <- model_rank
       
       # If necessary, apply the cand_tol criterion
-      if (any(delta_vec[-which(delta_vec == 0)] <= cand_tol)) {
+      if (any(delta_vec[-which(delta_vec == 0)] <= cand_tol, na.rm=T)) {
         # Then must consider model simplicity for the best models (only the
         # best models per cand_tol are re-ordered.
         ind_best <- which(delta_vec <= cand_tol)
@@ -876,7 +876,7 @@ evaluate_univariate_models <- function(data_dir,
       selection_df$model_rank[ind_ok] <- model_rank
       
       # If necessary, apply the cand_tol criterion
-      if (any(delta_vec[-which(delta_vec == 0)] <= cand_tol)) {
+      if (any(delta_vec[-which(delta_vec == 0)] <= cand_tol, na.rm=T)) {
         # Then must consider model simplicity for the best models (only the
         # best models per cand_tol are re-ordered.
         ind_best <- which(delta_vec <= cand_tol)
@@ -2020,6 +2020,8 @@ calc_aic <- function(k, eta) {
   }
   
   aic <- (2*eta) + (2*k)
+  aic <- ifelse(is.finite(aic),aic,NA)
+  
   return(aic)
 }
 
