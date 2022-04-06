@@ -2019,12 +2019,16 @@ analyze_x_posterior <- function(xv,fv,xknown=NA) {
   xmean <- sum(fv*xv)*dx
   n <- max(which(xv < xmean))
   fmean <- fv[n] + (xmean-xv[n])*(fv[n+1]-fv[n])/dx
+  
+  n <- which(fv==max(fv))
+  xmode <- xv[n]
+  fmode <- fv[n] + (xmode-xv[n])*(fv[n+1]-fv[n])/dx
 
   return_list <- list(x=xv,density=fv,dx=dx,
                      xlolo=xlolo,xlo=xlo,xmed=xmed,xhi=xhi,xhihi=xhihi,
-                     xmean=xmean,
+                     xmean=xmean,xmode=xmode,
                      flolo=flolo,flo=flo,fmed=fmed,fhi=fhi,fhihi=fhihi,
-                     fmean=fmean)
+                     fmean=fmean,xmode=xmode)
   if(!is.na(xknown)) {
     # Calculate the expectation (over the density) of (x-xknown)^2
     expected_sqr_err <- sum(dx*fv * (xv-xknown)^2)
