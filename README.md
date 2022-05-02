@@ -14,7 +14,7 @@ status](https://codecov.io/gh/eehh-stanford/yada/branch/identif/graph/badge.svg)
 `yada`, which stands for Yet Another Demographic Analysis package,
 implements age estimation using a mixed cumulative probit (MCP) model.
 
-A vignette for the general pipeline of optimizing a model using the MCP algorithm is provided [HERE](inst/doc/) and can be downloaded for reference. 
+A vignette for the general pipeline of optimizing a model using the MCP algorithm is provided [HERE](https://rpubs.com/elainechu/mcp_vignette). If you would like the .HTML file to view the vignette without internet access, please contact: Elaine Y. Chu (elainechu@nevada.unr.edu)
 
 ## Installation
 
