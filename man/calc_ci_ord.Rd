@@ -4,7 +4,7 @@
 \alias{calc_ci_ord}
 \title{Calculate ordinal model confidence intervals}
 \usage{
-calc_ci_ord(ord_model, th_x, input_seed = NA)
+calc_ci_ord(ord_model, th_x, point_est, xcalc)
 }
 \arguments{
 \item{ord_model}{List containing the parameter vector for y [th_y] and model
@@ -13,10 +13,11 @@ output of `solve_ord_problem`)}
 
 \item{th_x}{Parameterization for prior on x}
 
-\item{input_seed}{An optional seed that can be used to make results
-reproducible. The input_seed must be either (1) NA / not provided (the
-default), (2) a single integer, or (3) a vector with length M+1 (see
-Description for further details).}
+\item{point_est}{A character string with the type of point estimate to be 
+returned: mean ("xmean"), median ("xmed"), or mode ("xmode")}
+
+\item{xcalc}{A vector of evenly-spaced values at which to calculate the 
+posterior density}
 }
 \description{
 Wrapper function that takes an ordinal model and outputs the 

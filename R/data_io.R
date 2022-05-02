@@ -481,14 +481,14 @@ merge_multiple_lr_var <- function(input_df,
 #'
 #' Details on Variable: The variable names must be unique. An error is thrown if
 #' they are not. Each variable must match a column name in the corresponding
-#' data file (see [load_cp_data]).
+#' data file (see [reformat_mcp_data]).
 #'
 #' Details on Type: There should be exactly one variable specified as type x
 #' (for age estimation, x is age). Response variables (which comprise the matrix
 #' Y) must be either ordinal or continuous. Additional variables that should be
 #' kept in the returned data frame should be marked as other (likely, these are
 #' covariates). Variables that are not specified in the variable information
-#' file but are in the data file are ignored in [load_cp_data].
+#' file but are in the data file are ignored in [reformat_mcp_data].
 #'
 #' Details on Categories: Each ordinal variable must explicitly define the
 #' allowable categories and their order in the format expected by
@@ -517,7 +517,7 @@ merge_multiple_lr_var <- function(input_df,
 #'
 #' @export
 load_var_info <- function(var_info_file) {
-  # TODO: check that @examples works (and the same for load_cp_data)
+  # TODO: check that @examples works (and the same for reformat_mcp_data)
   var_info <- read.csv(var_info_file,
                        colClasses="character")
 
@@ -632,7 +632,7 @@ build_var_names <- function(var_info) {
 #' @description 
 #' The input is the Missing_Values column in var_info, which must have a length
 #' equal to the number of columns in the data file. This function is for use in
-#' [load_cp_data] to ensure only values expected for each trait are available.
+#' [reformat_mcp_data] to ensure only values expected for each trait are available.
 #' 
 #' @param missing_values A string containing values that should be recoded as NA
 #' separated by a comma
@@ -663,33 +663,20 @@ parse_NA_values <- function(missing_values) {
 #' Only variables with entries in var_info are kept (accounting for the
 #' possibility that some are left/right variables).
 #'
-#' @param data_file The .csv data file
+#' @param data_file_path The .csv data file path
 #' @param var_info The data frame with variable information (see
 #'   [load_var_info])
+#' @param save_file Logical whether to save the resulting data frame as 
+#'   "*_reformatted.csv" in the data_file_path
 #' 
-#' @examples
-#' # Load data file path from package yada
-#' data_file <- syanalysis_name.file("extdata","US.csv",package="yada")
-#' print(data_file)
-#' 
-#' # Load var_info_file from package yada
-#' var_info_file <- syanalysis_name.file("extdata","US_var_info.csv",package="yada")
-#' var_info <- load_var_info(var_info_file)  # load var info file as data frame
-#' head(var_info)
-#' 
-#' # Call load_cp_data to format data and problem file for cumulative probit
-#' cp_data <- load_cp_data(data_file, var_info)
-#' head(cp_data$cp_df)  # Top rows of cumulative probit data frame
-#' head(cp_data$problem)  # cumulative probit problem as list
 #'
-#' @return A named list containing 1) a data frame containing the cumulative probit
-#' data ("cp_df") and 2) the cumulative probit problem file ("problem")
+#' @return A data frame containing reformatted data for the mcp algorithm
 #'
 #' @export
-load_cp_data <- function(data_file,var_info) {
+reformat_mcp_data <- function(data_file_path, var_info, save_file=F) {
   # Read the "raw" data frame from file, with all columns being read as strings
-  raw_cp_df <- read.csv(data_file, colClasses="character")
-
+  raw_cp_df <- read.csv(data_file_path, colClasses="character")
+  
   # Check that each variable in var_info has a corresponding column in
   # raw_cp_df
   var_names <- build_var_names(var_info)
@@ -698,7 +685,7 @@ load_cp_data <- function(data_file,var_info) {
       stop(paste0(var_name," is not a column in the data file"))
     }
   }
-
+  
   # Create the output data frame, cp_df. Remove any columns in cp_df that are
   # not in var_names
   cp_df <- raw_cp_df
@@ -707,7 +694,7 @@ load_cp_data <- function(data_file,var_info) {
       cp_df[, orig_var_name] <- NULL
     }
   }
-
+  
   # If necessary, set to NA any elements of cp_df that are in the optional
   # column 'Missing_value' in var_info
   if(length(grep('Missing_Value',names(var_info))) > 0) {
@@ -724,16 +711,16 @@ load_cp_data <- function(data_file,var_info) {
       }
     }
   }
-
+  
   # Apply category specifications for each ordinal variable
   for (r in 1:nrow(var_info)) {
     base_var <- var_info[r,"Variable"]
     if (var_info[r,"Type"] == "ordinal") {
       cat_spec <- var_info[r,"Categories"]
-
+      
       # Is this a left/right variable?
       is_lr <- var_info[r,"Left_Right_Side"] != ""
-
+      
       if (is_lr) {
         left_var <- build_lr_var(base_var,
                                  var_info[r,"Left_Right_Side"],
@@ -752,10 +739,10 @@ load_cp_data <- function(data_file,var_info) {
       cp_df[, base_var] <- as.numeric(cp_df[, base_var])
     } else if(var_info[r,"Type"] %in% c("x","continuous")) {
       # continuous variables must be numeric
-
+      
       # Is this a left/right variable?
       is_lr <- var_info[r,"Left_Right_Side"] != ""
-
+      
       if (is_lr) {
         left_var <- build_lr_var(base_var,
                                  var_info[r,"Left_Right_Side"],
@@ -771,7 +758,7 @@ load_cp_data <- function(data_file,var_info) {
       }
     }
   }
-
+  
   # Merge left/right variables (as necessary). In the process, update variable
   # names and variable types
   var_name_vect <- c()
@@ -800,7 +787,7 @@ load_cp_data <- function(data_file,var_info) {
                                 side_loc,
                                 side_labels,
                                 approach)
-
+          
         } else {
           # This is a left/right variable that is not being merged
           left_var <- build_lr_var(base_var,
@@ -819,14 +806,47 @@ load_cp_data <- function(data_file,var_info) {
       }
     }
   }
+  
+  if (save_file) {
+    new_data_file <- paste0(gsub(".csv","",data_file_path),"_reformatted.csv")
+    write.csv(cp_df, new_data_file, row.names=F)
+  }
+  
+  return(cp_df)
+}
 
+
+#' @title Generate the main problem file
+#' 
+#' @description The main problem file is a list containing the training data 
+#'   for the mcp algorithm, as well as model specifications ("mod_spec") 
+#'   including the number of ordinal (J) and continuous (K) variables and 
+#'   the number of breaks between ordinal stages (M).
+#' 
+#' @param data_file Data frame containing the training data
+#' @param var_info The var_info file loaded via [load_var_info()]
+#' 
+#' @return A list containing the response variable (x) as a vector, 
+#'   the predictor variables as a matrix (Y), and another list (mod_spec) 
+#'   containing the model specifications.
+#' 
+#' @export
+
+generate_main_problem <- function(data_file, var_info) {
+  # Initialize data_file as cp_df
+  cp_df <- data_file
+  
   # Create a problem variable in the format expected by the optimization
   # functions
   var_name_x <- var_info[which(var_info$Type == "x"),"Variable"]
+  ord_cont_idx <- which(var_info$Type %in% c("ordinal","continuous"))
+  var_type_vect <- var_info$Type[ord_cont_idx]
+  var_name_vect <- var_info$Variable[ord_cont_idx]
+  # base_var_vect <- colnames(data_file)[ord_cont_idx]
   x <- cp_df[,var_name_x]
   J <- sum(var_type_vect == "ordinal")
   K <- sum(var_type_vect == "continuous")
-
+  
   ind_ord  <- which(var_type_vect == "ordinal")
   ind_cont <- which(var_type_vect == "continuous")
   N <- length(x)
@@ -838,20 +858,20 @@ load_cp_data <- function(data_file,var_info) {
     for (j in 1:length(ind_ord)) {
       var_j <- var_name_vect[ind_ord[j]]
       Y[j,] <- cp_df[,var_j]
-      ind_vi <- which(base_var_vect[ind_ord[j]] == var_info$Variable)
+      ind_vi <- which(var_name_vect[ind_ord[j]] == var_info$Variable)
       cat_spec <- var_info[ind_vi,"Categories"]
       cat_map <- parse_cat_spec(cat_spec)
       M[j] <- length(unique(cat_map)) - 1
     }
   }
-
+  
   if(length(ind_cont) > 0) {
     for (k in 1:length(ind_cont)) {
       var_k <- var_name_vect[ind_cont[k]]
       Y[J+k,] <- cp_df[,var_k]
     }
   }
-
+  
   # Check for x NA in problem
   if(any(is.na(x))) {
     stop(paste0(var_name_x," cannot have missing values"))
@@ -863,15 +883,14 @@ load_cp_data <- function(data_file,var_info) {
     x <- x[-allNAs]  # remove individuals with fully missing traits
     Y <- Y[,-allNAs]  # remove columns (individuals) with fully missing traits
   }
-
+  
   # Generate M
   problem <- list(x=x,
                   Y=Y,
                   var_names=c(var_name_vect[ind_ord],var_name_vect[ind_cont]),
                   mod_spec=list(J=J,K=K,M=M))
-
-  return(list(cp_df=cp_df,problem=problem))
 }
+
 
 #' @title A wrapper to generate the cross-validation problems
 #'
@@ -893,7 +912,7 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
   }
   set.seed(seed)
   folds <- nestfs::create.folds(K,N)
-
+  
   # Iterate over folds to generate the test sets in test_list and the training
   # sets in train_list
   test_list <- list()
@@ -903,39 +922,33 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
     train <- list()
     # Test data
     test <- list()
-
+    
     train <- list(x        = problem0$x[-folds[[ff]]],
-                  medrec   = problem0$medrec[-folds[[ff]]],
-			      sex      = problem0$sex[-folds[[ff]]],
-			      location = problem0$location[-folds[[ff]]],
-			      var_names = problem0$var_names)
-
-    test  <- list(x         = problem0$x[folds[[ff]]],
-                  medrec    = problem0$medrec[folds[[ff]]],
-                  sex       = problem0$sex[folds[[ff]]],
-                  location  = problem0$location[folds[[ff]]],
                   var_names = problem0$var_names)
-
+    
+    test  <- list(x         = problem0$x[folds[[ff]]],
+                  var_names = problem0$var_names)
+    
     # Y and mod_spec may need to be adjusted for any ordinal variable with a
     # reduced number of categories in the training data. This would also have to
     # be accounted for in the test data since some categories in the test data
     # do not have a unique mapping to collapsed categories in the training data.
     # If a remapping is needed, it is done below.
-
+    
     # First create Y_train and mod_spec by iterating variables, collapsing
     # categories as necessary
     N_test <- length(folds[[ff]])
     N_train   <- N - N_test
     num_var <- length(problem0$var_names)
-
+    
     Y_train0 <- problem0$Y[,-folds[[ff]]]
     Y_test0  <- problem0$Y[, folds[[ff]]]
-
+    
     Y_train  <- matrix(NA,num_var,N_train)
     Y_test   <- matrix(NA,num_var,N_test)
     # mod_spec$M must be updated if categories are collapsed
     mod_spec     <- problem0$mod_spec
-
+    
     # Iterate over ordinal variables to see if any categories are missing for
     # this subset
     for(vv in 1:num_var) {
@@ -944,19 +957,19 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
         var_cat0 = sort(var_cat0[!is.na(var_cat0)])
         var_cat = unique(Y_train0[vv,])
         var_cat = sort(var_cat[!is.na(var_cat)])
-      	if(length(var_cat) == length(var_cat0)) {
-                Y_train[vv,] <- Y_train0[vv,]
-                Y_test [vv,] <- Y_test0[vv,]
-      	} else { # remapping needed
-
-	        miss_var <- setdiff(var_cat0, var_cat)  # identify missing categories
-	        Y_train[vv,] <- Y_train0[vv,]  # initially set as same
-	        Y_test[vv,]  <- Y_test0[vv,]  # initially set as same
-
-	        for(mm in 1:length(miss_var)){
+        if(length(var_cat) == length(var_cat0)) {
+          Y_train[vv,] <- Y_train0[vv,]
+          Y_test [vv,] <- Y_test0[vv,]
+        } else { # remapping needed
+          
+          miss_var <- setdiff(var_cat0, var_cat)  # identify missing categories
+          Y_train[vv,] <- Y_train0[vv,]  # initially set as same
+          Y_test[vv,]  <- Y_test0[vv,]  # initially set as same
+          
+          for(mm in 1:length(miss_var)){
             # randomly decide adjacent attachment for training set
             att_var <- sample(c(1,-1), 1)
-
+            
             if(miss_var[mm] == 0){
               # If the missing variable is 0, bump all scores down in the
               # training set
@@ -966,7 +979,7 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
               Y_test[vv,] <- ifelse(Y_test[vv,] == miss_var[mm],
                                     Y_test[vv,],
                                     Y_test[vv,] - 1)
-
+              
             } else {
               # TRAIN: If the score is lower than the missing variable, keep
               # the score. Otherwise, reduce by 1
@@ -974,35 +987,36 @@ generate_cv_problems <- function(main_problem,K,seed=NA) {
               # neighboring score. Adjust for remapping
               Y_train[vv,] <- ifelse(Y_train[vv,] < miss_var[mm], Y_train[vv,], Y_train[vv,] - 1)
               Y_test[vv,] <- ifelse(Y_test[vv,] == miss_var[mm],
-                                   Y_test[vv,] + att_var,
-                                   ifelse(Y_test[vv,] > miss_var[mm],
-                                          Y_test[vv,] - 1,
-                                          Y_test[vv,]))
+                                    Y_test[vv,] + att_var,
+                                    ifelse(Y_test[vv,] > miss_var[mm],
+                                           Y_test[vv,] - 1,
+                                           Y_test[vv,]))
             }
-
+            
             if(mm == length(miss_var)){
               break
             } else {
               # account for remapping for next missing variable
               miss_var[mm+1] <- miss_var[mm+1] - 1
             }
-	        }
-	      }
+          }
+        }
       } else { # continuous, not ordinal
         Y_train[vv,] <- Y_train0[vv,]
         Y_test [vv,] <- Y_test0[vv,]
       }
     }
-
+    
     train$Y <- Y_train
     test$Y  <- Y_test
     train$mod_spec <- mod_spec
     test_list[[ff]] <- test
     train_list[[ff]] <- train
-
+    
   }
   return(list(test_list=test_list,train_list=train_list,seed=seed))
 }
+
 
 #' @title Wrapper function to save problem files
 #'
@@ -1541,6 +1555,293 @@ build_model_vec <- function(mean_models, noise_models) {
   }
   
   return(model_vec)
+}
+
+
+#' @title Calculate the prior parameterization on x
+#' 
+#' @description A function to apply a Weibull offset mixture to the response 
+#'   variable (x) to establish a parameterization for the prior on x
+#' 
+#' @param data_dir The directory where data are pulled and saved
+#' @param analysis_name Unique identifier for the analysis
+#' @param prior_type The type of prior to be applied to x, currently only 
+#'   one available option, prior_type="weibull"
+#' @param offset Amount by which to offset the x values
+#' @param fold The fold number if not calculating for the main problem. 
+#'   Default is fold=NA  
+#' @param save_file Logical whether to save the output in data_dir
+#' 
+#' @return A list with the prior parameterization specifications
+#' 
+#' @export
+calc_x_prior <- function(data_dir, analysis_name,
+                         prior_type="weibull", offset,
+                         seed, fold=NA, save_file=F) {
+  
+  # Load the problem file
+  if (is.na(fold)) {
+    problem <- readRDS(build_file_path(data_dir,
+                                       analysis_name,
+                                       "main_problem"))
+  } else {
+    problem <- readRDS(build_file_path(data_dir,
+                                       analysis_name,
+                                       "training_problem",
+                                       fold=fold))
+  }
+  
+  if (prior_type!="weibull") {
+    stop("Current input for prior_type is not an available option.")
+  }
+  
+  # if (prior_type=="weibull") {
+  fit_type <- "offset_weib_mix"
+  
+  set.seed(seed)  # set seed for replication
+  
+  # define Weibull fit with predictor offset
+  prior_fit <- mixtools::weibullRMM_SEM(problem$x + offset,
+                                        k=3,
+                                        maxit=2000)
+  # }
+  
+  # Generate and save the x-solution for the problem
+  th_x <- list(fit_type='offset_weib_mix',
+               fit=prior_fit,
+               weib_offset=offset)
+  
+  if (save_file) {
+    saveRDS(th_x, build_file_path(data_dir, analysis_name, "solutionx"))
+  }
+  
+  return(th_x)
+}
+
+
+#' @title Calculate point estimate and credible interval for test data
+#'   (univariate)
+#'
+#' @description A wrapper function that calculates the point estimate and 
+#'   credible interval for all observations in the provided test sample
+#'   by input variable using univariate models. 
+#'   The function prints the observation number currently being predicted and 
+#'   also returns the top 6 rows of a completed prediction table.
+#'   
+#' @param data_dir The directory from which models should be imported
+#' @param analysis_name Unique identifier for the analysis
+#' @param test_samp A data frame with test observations  
+#' @param demo_cols A vector representing demographic column numbers  
+#' @param input_cols A vector representing the input (predictor) columns
+#' @param ci_type Whether the credible intervals should be calculated using 
+#'   "hdi" or "quantiles"  
+#' @param th_x The prior parameterization on x  
+#' @param xcalc A vector of evenly-spaced values at which to calculate the 
+#'   posterior density 
+#' @param seed A numeric value to set the seed for replication  
+#' @param save_file A logical for whether the results should be saved. 
+#'   (default: T)
+#'
+#' @export
+univariate_batch_calc <- function(data_dir, analysis_name, 
+                                  test_samp, demo_cols,
+                                  input_cols, ci_type, th_x,
+                                  xcalc, seed, save_file=T) {
+  
+  ## Initialize empty data frames for demo columns and prediction columns
+  demo0 <- data.frame(matrix(data=NA, nrow=nrow(test_samp),
+                             ncol=length(demo_cols)))
+  pred0 <- data.frame(matrix(data=NA, nrow=nrow(test_samp), 
+                             ncol=7))  # mean, median, mode, lower99, lower95, 
+  # upper95, upper99
+  
+  # Load problem file for current analysis
+  problem <- readRDS(build_file_path(data_dir, analysis_name, 'main_problem'))
+  
+  # Load the prior on th_x 
+  th_x <- readRDS(build_file_path(data_dir, analysis_name, 'solutionx'))
+  
+  ## Loop through available response variables in test sample
+  for(i in input_cols) {
+    var_name <- colnames(test_samp)[i]
+    model <- tryCatch({
+      load_best_univariate_model(data_dir, analysis_name, var_name=var_name)},
+      error=function(cond) {
+        return(NA)
+      })
+    
+    if (length(model) != 2) {
+      print(paste0("Best model not selected for ",var_name))
+      next
+    }
+    
+    print(paste0("---Starting batch processing for ",var_name,"---"))
+    
+    Y <- test_samp[[i]]  # vector of current variable values
+    
+    ## Loop through values in Y and estimate point and CI
+    for (n in 1:length(Y)) {
+      demo0[n,] <- test_samp[n,demo_cols]
+      print(paste0("Calculating for observation n=", n))
+      
+      ## Check if current_val is NA
+      if (is.na(Y[n])) {
+        pred0[n,] <- rep(NA,7)
+        next
+      }
+      
+      ## Calculate posterior density, point estimate, and confidence interval
+      x_post <- calc_x_posterior(Y[n], th_x, model, xcalc, normalize=T, seed)
+      x_analyze <- analyze_x_posterior(x_post$x, x_post$density, 
+                                       ci_type=ci_type)
+      pred0[n,] <- round(c(x_analyze$xmean, x_analyze$xmed, x_analyze$xmode,
+                           x_analyze$xlolo, x_analyze$xlo, 
+                           x_analyze$xhi, x_analyze$xhihi),2)
+    }
+    
+    df <- cbind(demo0, pred0)
+    colnames(df) <- c(colnames(test_samp[demo_cols]),
+                      "xmean","xmed","xmode",
+                      "lower99","lower95",
+                      "upper95","upper99")
+    
+    if(save_file) {
+      write.csv(df, paste0(data_dir,'/',var_name,"_",
+                           analysis_name,"_test_predictions.csv"),row.names=F)
+    }
+    
+    print(paste0('Prediction Table for ',var_name))
+    print(head(df))
+  }
+}
+
+
+#' @title Calculate point estimate and credible interval for test data 
+#'   (multivariate)
+#'
+#' @description A wrapper function that calculates the point estimate and 
+#'   credible interval for all observations in the provided test sample
+#'   using using a defined model. 
+#'   The function prints the observation number currently being predicted and 
+#'   also returns the top 6 rows of a completed prediction table.
+#'   
+#' @param data_dir The directory from which models should be imported
+#' @param analysis_name Unique identifier for the analysis
+#' @param test_samp A data frame with test observations  
+#' @param demo_cols A vector representing demographic column numbers  
+#' @param model_type A character string defining either the conditionally 
+#'   independent ("cindep") or conditionally dependent ("cdep") model
+#' @param ci_type Whether the credible intervals should be calculated using 
+#'   "hdi" or "quantiles"
+#' @param th_x The prior parameterization on x  
+#' @param xcalc A vector of evenly-spaced values at which to calculate the 
+#'   posterior density 
+#' @param seed A numeric value to set the seed for replication  
+#' @param save_file A logical for whether the results should be saved. 
+#'   (default: T)
+#'
+#' @export
+multivariate_batch_calc <- function(data_dir, analysis_name, 
+                                    test_samp, demo_cols,
+                                    model_type, ci_type, th_x,
+                                    xcalc, seed, save_file=T) {
+  
+  # Load problem file for current analysis
+  problem <- readRDS(build_file_path(data_dir, analysis_name,
+                                     'main_problem'))
+  
+  
+  # Calculate parameterization for prior on x (age)
+  th_x <- readRDS(build_file_path(data_dir,analysis_name,"solutionx"))
+  
+  # Extract response variables as matrix Y in order expected by multivariate model
+  ef_vars <- grep("_EF|_Oss", names(test_samp))
+  dent_vars <- grep("man_|max_", names(test_samp))
+  lb_vars <- grep("DL|PB|MSB|DB", names(test_samp))
+  Y <- t(test_samp[c(ef_vars, dent_vars, lb_vars)])
+  if (!all(rownames(Y) == problem$var_names)) {
+    stop("Problem with organizing response variables")
+  }
+  
+  ## Initialize empty data frames for demo columns and prediction columns
+  demo0 <- data.frame(matrix(data=NA, nrow=nrow(test_samp),
+                             ncol=length(demo_cols)))
+  pred0 <- data.frame(matrix(data=NA, nrow=nrow(test_samp), 
+                             ncol=7))  # mean, median, mode, lower99, lower95, 
+  # upper95, upper99
+  
+  ## Initialize multivariate model parameters
+  file_type <- paste0(model_type,"_model")
+  model <- readRDS(build_file_path(data_dir,analysis_name,file_type))
+  
+  for(i in 1:ncol(Y)) {
+    print(paste0('Calculating age posterior for observation=',i))
+    
+    demo0[i,] <- test_samp[i,demo_cols]
+    
+    if (all(is.na(Y[,i]))) {
+      pred0[i,] <- rep(NA,7)
+    }
+    
+    x_post <- calc_x_posterior(Y[,i], th_x, model, xcalc, normalize=T, seed=NA)
+    x_analyze <- analyze_x_posterior(x_post$x, x_post$density,
+                                     ci_type=ci_type)
+    
+    pred0[i,] <- round(c(x_analyze$xmean, x_analyze$xmed, x_analyze$xmode,
+                         x_analyze$xlolo, x_analyze$xlo, 
+                         x_analyze$xhi, x_analyze$xhihi),2)
+  }
+  
+  df <- cbind(demo0,pred0)
+  colnames(df) <- c(colnames(test_samp[demo_cols]),
+                    "xmean","xmed","xmode",
+                    "lower99","lower95",
+                    "upper95","upper99")
+  
+  if (save_file) {
+    write.csv(df, paste0(data_dir,"/",file_type,"_",analysis_name,
+                         "_test_predictions.csv"), row.names=F)
+  }
+  print(paste0('Prediction Table for ',file_type,':'))
+  print(head(df))
+}
+
+
+#' @title Generate ordinal credible interval tables
+#'
+#' @description Calculate a table providing the point estimate and 
+#'   credible interval of a given univariate ordinal model
+#'   
+#' @param data_dir The directory from which models should be imported
+#' @param analysis_name Unique identifier for the analysis
+#' @param var_name A character string with the variable of interest
+#' @param th_x The prior parameterization on x  
+#' @param point_est A character string with the type of point estimate to be 
+#'   returned: mean ("xmean"), median ("xmed"), or mode ("xmode")  
+#' @param xcalc A vector of evenly-spaced values at which to calculate the 
+#'   posterior density 
+#' @param save_file A logical for whether the results should be saved. 
+#'   (default: T)
+#'
+#' @export
+generate_ord_ci <- function(data_dir, analysis_name, var_name,
+                            th_x, point_est, xcalc, save_file=F) {
+  
+  # Load the best ordinal model
+  ord_model <- load_best_univariate_model(data_dir, analysis_name,
+                                          var_name)
+  
+  # Calculate the confidence intervals and point estimate
+  ci_df <- calc_ci_ord(ord_model, th_x, point_est, xcalc)
+  
+  if(save_file) {
+    saveRDS(ci_df, build_file_path(data_dir,
+                                   analysis_name,
+                                   "ordinal_ci",
+                                   var_name=var_name))
+  }
+  
+  return(ci_df)
 }
 
 #' @title Clear all the files in the temporary directory

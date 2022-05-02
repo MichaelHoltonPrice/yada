@@ -882,56 +882,36 @@ get_approx_x_range_cont <- function(w,th_w,mod_spec) {
 #' specification [mod_spec] for an ordinal univariate model (likely the 
 #' output of `solve_ord_problem`)
 #' @param th_x Parameterization for prior on x
-#' @param input_seed An optional seed that can be used to make results
-#'   reproducible. The input_seed must be either (1) NA / not provided (the
-#'   default), (2) a single integer, or (3) a vector with length M+1 (see
-#'   Description for further details).
+#' @param point_est A character string with the type of point estimate to be 
+#'   returned: mean ("xmean"), median ("xmed"), or mode ("xmode")  
+#' @param xcalc A vector of evenly-spaced values at which to calculate the 
+#'   posterior density 
 #' 
 #' @export
 #'
-calc_ci_ord <- function(ord_model, th_x, input_seed=NA) {
-  # Handle the random number seeds
-  if (length(input_seed) == 1) {
-    if (is.na(input_seed)) {
-      base_seed <- sample.int(1000000,1)
-    } else {
-      base_seed <- input_seed
-    }
-    set.seed(base_seed)
-    seed_vect <- sample.int(1000000,ord_model$mod_spec$M+1)
-  } else {
-    if (length(input_seed) != ord_model$mod_spec$M + 1) {
-      stop("If input_seed is a vector, it must have length M+1")
-    }
-    seed_vect <- input_seed
-  }
-
+calc_ci_ord <- function(ord_model, th_x, point_est, xcalc) {
+  
   # Initialize matrix (M+1 x 6)
   ci_mat <- matrix(nrow=(ord_model$mod_spec$M+1), ncol=6)
   
-#  # Add cdep_spec to univariate mod_spec?
-#  ord_model$mod_spec$cdep_spec <- 'indep'
-
   # Run through each ordinal stage, calculating the posterior density,
   # point estimate, 95%, and 99% confidence intervals and populating ci_mat
   for(m in 0:ord_model$mod_spec$M) {
-    x_post <- calc_x_posterior(y=m, th_x, ord_model$th_y,
-                               ord_model$mod_spec, seed=seed_vect[m+1])
-    xcalc <- x_post$x
-    x_analyze <- analyze_x_posterior(xcalc, x_post$density)
-
+    x_post <- calc_x_posterior(m, th_x, ord_model, xcalc=xcalc, normalize=T)
+    x_analyze <- analyze_x_posterior(x_post$x, x_post$density)
+    
     ci_mat[m+1,1] <- m  # ordinal stage
-    ci_mat[m+1,2] <- round(x_analyze$xmean, 2)  # point estimate
-    ci_mat[m+1,3] <- round(x_analyze$xlo, 2)  # lower 95
-    ci_mat[m+1,4] <- round(x_analyze$xhi, 2)  # upper 95
-    ci_mat[m+1,5] <- round(x_analyze$xlolo, 2) # lower 99
-    ci_mat[m+1,6] <- round(x_analyze$xhihi, 2) # upper 99
+    ci_mat[m+1,2] <- round(x_analyze[[point_est]], 2)  # point estimate
+    ci_mat[m+1,3] <- round(x_analyze$xlolo, 2)         # lower 99
+    ci_mat[m+1,4] <- round(x_analyze$xlo, 2)           # lower 95
+    ci_mat[m+1,5] <- round(x_analyze$xhi, 2)           # upper 95
+    ci_mat[m+1,6] <- round(x_analyze$xhihi, 2)         # upper 99
   }
-
+  
   # Format ci_mat as final data frame
   ci_df <- as.data.frame(ci_mat)
-  colnames(ci_df) <- c("ord_stage", "point_est", "CI95_lower",
-                       "CI95_upper", "CI99_lower", "CI99_upper")
+  colnames(ci_df) <- c("ord_stage", "point_est", "lower99",
+                       "lower95", "upper95", "uperr99")
   
   return(ci_df)
 }

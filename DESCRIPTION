@@ -20,6 +20,7 @@ Imports:
     nestfs,
     numDeriv,
     gtools,
+    bayestestR,
     rmarkdown
 Suggests:
     devtools,

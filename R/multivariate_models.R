@@ -1554,32 +1554,35 @@ sim_multivariate <- function(th_y,mod_spec,N=NA,th_x=NA,x=NA) {
 #'   (likely the output of build_cindep_model). cindep_model must contain
 #'   cindep_model$th_y_bar and cindep_model$th_y_bar_scale.
 #' @param save_file String containing the progress file name
+#' @param hjk_control A list passed to the function dfoptim::hjk()
 #'
 #' @return A list object containing  the best-fit parameter vector (th_y), and
-#'   the unconstrained best-fit parameter (th_y_bar), and the return object from
-#'   the optimization (hjk_output).
+#'   the unconstrained best-fit parameter (th_y_bar), the return object from
+#'   the optimization (hjk_output), the model specification (mod_spec), and 
+#'   a record of how many legs it took for optimization (legs)
 #'
 #' @export
 fit_multivariate <- function(x,Y,mod_spec,
                              cindep_model,
+                             prog_file=NA,
                              save_file=NA,
                              hjk_control=list()) {
-
-  if (!is.na(save_file)) {
-    if (file.exists(save_file)) {
-      print("save_file already exists, starting from previous run")
+  
+  if (!is.na(prog_file)) {
+    if (file.exists(prog_file)) {
+      print("prog_file already exists, starting from previous run")
     }
   }
-
+  
   # Create (a) the calculation data that supports rapid calculation of the
   # negative log-likelihood (calc_data) and (b) the transform category vector
   # so that the optimization can be unconstrained (tf_cat_vect).
   calc_data = prep_for_neg_log_lik_multivariate(x,Y,
                                                 mod_spec,remove_log_ord=TRUE)
   tf_cat_vect = get_multivariate_transform_categories(mod_spec)
-
+  
   # Initialize vectors if this is the first run
-  if (!file.exists(save_file)) {
+  if (!file.exists(prog_file)) {
     # Extract initialization variables from cindep_model
     th_y_bar0      <- cindep_model$th_y_bar
     th_y_bar_scale <- cindep_model$th_y_bar_se
@@ -1599,34 +1602,34 @@ fit_multivariate <- function(x,Y,mod_spec,
     leg <- 1
     
   } else {
-    # Manipulate save_file to find all previous runs
+    # Manipulate prog_file to find all previous runs
     n <- 1  # at least one leg already exists
-    split_file_list <- strsplit(save_file,"/|\\.")  # split save_file
+    split_file_list <- strsplit(prog_file,"/|\\.")  # split prog_file
     data_dir <- split_file_list[[1]][1]  # extract data directory
     file_name <- split_file_list[[1]][2]  # extract file name without extension
-    save_file_vec <- list.files(data_dir,file_name)  # all hjk files
+    prog_file_vec <- list.files(data_dir,file_name)  # all hjk files
     
-    # Find the most recent save_file and import
-    if (length(grep("leg",save_file_vec)) > 0) {
-      max_leg <- max(grep("leg",save_file_vec))
-      save_file0 <- readRDS(paste0(data_dir,"/",file_name,"_leg",max_leg,".rds"))
+    # Find the most recent prog_file and import
+    if (length(grep("leg",prog_file_vec)) > 0) {
+      max_leg <- max(grep("leg",prog_file_vec))
+      prog_file0 <- readRDS(paste0(data_dir,"/",file_name,"_leg",max_leg,".rds"))
     } else {
       max_leg <- 1
-      save_file0 <- readRDS(save_file)
+      prog_file0 <- readRDS(prog_file)
     }
-
+    
     leg <- n + max_leg  # new leg
     
     # Initialize values from previous run
-    param0 <- save_file0$param_best
-    th_y_bar0 <- save_file0$th_y_bar0
-    th_y_bar_scale <- save_file0$th_y_bar_scale
+    param0 <- prog_file0$param_best
+    th_y_bar0 <- prog_file0$th_y_bar0
+    th_y_bar_scale <- prog_file0$th_y_bar_scale
     
     # New save file, adding leg information
-    save_file <- paste0(data_dir,"/",file_name,"_leg",leg,".rds")
+    prog_file <- paste0(data_dir,"/",file_name,"_leg",leg,".rds")
   }
-
-
+  
+  
   # Solve the optimization problem
   hjk_output <- dfoptim::hjk(param0,
                              hjk_nll_wrapper,
@@ -1635,19 +1638,26 @@ fit_multivariate <- function(x,Y,mod_spec,
                              th_y_bar_scale=th_y_bar_scale,
                              calc_data=calc_data,
                              tf_cat_vect=tf_cat_vect,
-                             save_file=save_file)
-
-
+                             save_file=prog_file)
+  
+  
   # Extract the fit (changing back to the constrained representation)
   th_y_bar <- th_y_bar0 + hjk_output$par * th_y_bar_scale
   th_y <- param_unconstr_to_constr(th_y_bar, tf_cat_vect)
-
-  return(list(th_y=th_y,
-              th_y_bar=th_y_bar,
-              hjk_output=hjk_output,
-              mod_spec=mod_spec,
-              leg=leg))
+  
+  output <- list(th_y=th_y,
+                 th_y_bar=th_y_bar,
+                 hjk_output=hjk_output,
+                 mod_spec=mod_spec,
+                 leg=leg)
+  
+  if (!is.na(save_file)) {
+    saveRDS(output, save_file)
+  }
+  
+  return(output)
 }
+
 
 #' @title Sample from the posterior density of x
 #'
@@ -1786,21 +1796,22 @@ sample_x_posterior <- function(y,
 #' @param xcalc A vector of ages at which to calculate the posterior probability
 #' @param y The response vector for a single observation
 #' @param th_x Parameterization for prior on x
-#' @param th_y Parameterization for likelihood
-#' @param mod_spec The model specification
+#' @param model The model used to calculate the posterior probability
+#' @param xcalc A vector of evenly spaced values at which to calculate the 
+#'   posterior probability density (default: c())
 #' @param normalize Whether or not to normalize to integrate to 1 (default:
 #'   TRUE).
 #' @param seed An optional input seed to make sampling reproducibile
 #'   (default: NA, not used)
 #' @return A vector of posterior probabilities
 #' @export
-calc_x_posterior <- function(y,th_x,th_y,mod_spec,
+calc_x_posterior <- function(y,th_x,model,
                              xcalc=c(),normalize=T,seed=NA) {
-
+  
   if ( (length(xcalc) > 0) && !is.na(seed) ) {
     stop("A seed should not be provided if xcalc is provided")
   }
-
+  
   # If xcalc is input and normalize is TRUE, xcalc must be evenly spaced
   # TODO: add support for trapezoidal integration
   if ( (length(xcalc) > 0) && normalize) {
@@ -1817,7 +1828,11 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
       stop('xcalc must be evenly spaced if it is input and normalize is TRUE')
     }
   }
-
+  
+  # Define the th_y and mod_spec from the given model
+  th_y <- model$th_y
+  mod_spec <- model$mod_spec
+  
   if ( (length(xcalc) > 0) && !is.na(seed) ) {
     stop("A seed should not be provided if xcalc is provided")
   }
@@ -1832,26 +1847,26 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
                                   1000,
                                   prop_rescale=1,
                                   seed=seed)
-
+    
     # Pad by 25% on either side
     xmin <- min(x_samp)
     xmax <- max(x_samp)
-
+    
     xmin <- xmin - (xmax-xmin)*.25
     xmax <- xmax + (xmax-xmin)*.25
-
+    
     # Ensure that xmin is not negative
     if (xmin < 0) {
       xmin <- 0
     }
-
+    
     # Use 1000 samples for xcalc on the range xmin to xmax
     xcalc <- seq(xmin,xmax,len=1000)
     dx <- (xmax-xmin)/1000
   } else {
     x_samp <- c()
   }
-
+  
   # Handle the possibility that x=0 and m>0 with a log_ord mean_spec by
   # removing the first observation from xcalc if it is zero.
   fix_x <- FALSE
@@ -1867,14 +1882,14 @@ calc_x_posterior <- function(y,th_x,th_y,mod_spec,
       }
     }
   }
-
+  
   if(fix_x) {
     p_xy <- calc_joint(xcalc[-1],y,th_x,th_y,mod_spec)
     p_xy <- c(0,p_xy)
   } else {
     p_xy <- calc_joint(xcalc,y,th_x,th_y,mod_spec)
   }
-
+  
   if (normalize) {
     # This point should not be reached unless xcalc is evenly spaced
     p_x <- p_xy / sum(p_xy) / dx
@@ -1966,56 +1981,84 @@ calc_x_density <- function(x,th_x) {
 }
 
 #' @title
-#' Analyze an input density by calculating the mean and confidence intervals
+#' Analyze an input density by calculating the mean and credible intervals
 #'
 #' @description
 #' \code{analyze_x_posterior} analyzes an input density given by the input pair
 #' of vectors xv and fv by calculating the mean and confidence intervals for a
-#' handful of quantiles (0.001, 0.025, 0.5, 0.975, and 0.999). xv is assumed to
+#' handful of quantiles (0.001, 0.025, 0.5, 0.975, and 0.999) or the 
+#' highest density interval (0.95, 0.99). xv is assumed to
 #' be evenly spaced. Optionally, a known age (xknown) can be input, for which
 #' the density is estimated.
 #'
 #' @param xv A vector of evenly spaced ages at which the density, fv,
 #'   is calculated
 #' @param fv A vector of densities
+#' @param ci_type Whether the credible interval should be calculated using 
+#'   "quantiles" or highest density interval ("hdi"). (default is "hdi")
 #' @param xknown Known age [optional]
+#' 
 #'
 #' @return A list containing the results of the analysis
 #'
+#' @import bayestestR
 #' @export
-analyze_x_posterior <- function(xv,fv,xknown=NA) {
+analyze_x_posterior <- function(xv,fv,ci_type="hdi",xknown=NA) {
+  if (!(ci_type %in% c('quantiles','hdi'))) {
+    stop(paste0("Current selection of ci_type=",ci_type," not supported."))
+  }
+  
   # TODO: consider adding a check that xv is evenly spaced
   dx <- xv[2] - xv[1]
   # fv is the same as p_x
   fv <- fv / sum(fv) / dx
   Fv <- c(0,dx*cumsum(fv)[1:(length(xv)-1)])
-
-
-  q <- 0.001
-  n <- max(which(Fv <= q))
-  xlolo <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
-  flolo <- fv[n] + (xlolo-xv[n])*(fv[n+1]-fv[n])/dx
-
-  q <- 0.025
-  n <- max(which(Fv <= q))
-  xlo <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
-  flo <- fv[n] + (xlo-xv[n])*(fv[n+1]-fv[n])/dx
-
+  
+  if (ci_type=="quantiles") {
+    q <- 0.001
+    n <- max(which(Fv <= q))
+    xlolo <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
+    flolo <- fv[n] + (xlolo-xv[n])*(fv[n+1]-fv[n])/dx
+    
+    q <- 0.025
+    n <- max(which(Fv <= q))
+    xlo <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
+    flo <- fv[n] + (xlo-xv[n])*(fv[n+1]-fv[n])/dx
+    
+    q <- 0.975
+    n <- max(which(Fv <= q))
+    xhi <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
+    fhi <- fv[n] + (xhi-xv[n])*(fv[n+1]-fv[n])/dx
+    
+    q <- 0.999
+    n <- max(which(Fv <= q))
+    xhihi <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
+    fhihi <- fv[n] + (xhihi-xv[n])*(fv[n+1]-fv[n])/dx
+  } 
+  if (ci_type=="hdi") {
+    samples <- sample(xv, 10000, replace=T, prob=fv)
+    hdi99 <- suppressWarnings(hdi(samples, ci=0.99))
+    hdi95 <- suppressWarnings(hdi(samples, ci=0.95))
+    
+    xlolo <- hdi99$CI_low
+    flolo <- fv[which(xv==xlolo)]
+    
+    xlo <- hdi95$CI_low
+    flo <- fv[which(xv==xlo)]
+    
+    xhi <- hdi95$CI_high
+    fhi <- fv[which(xv==xhi)]
+    
+    xhihi <- hdi95$CI_high
+    fhihi <- fv[which(xv==xhihi)]
+    
+  }
+  
   q <- 0.5
   n <- max(which(Fv <= q))
   xmed <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
   fmed <- fv[n] + (xmed-xv[n])*(fv[n+1]-fv[n])/dx
-
-  q <- 0.975
-  n <- max(which(Fv <= q))
-  xhi <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
-  fhi <- fv[n] + (xhi-xv[n])*(fv[n+1]-fv[n])/dx
-
-  q <- 0.999
-  n <- max(which(Fv <= q))
-  xhihi <- xv[n] + dx*(q-Fv[n])/(Fv[n+1]-Fv[n])
-  fhihi <- fv[n] + (xhihi-xv[n])*(fv[n+1]-fv[n])/dx
-
+  
   xmean <- sum(fv*xv)*dx
   n <- max(which(xv < xmean))
   fmean <- fv[n] + (xmean-xv[n])*(fv[n+1]-fv[n])/dx
@@ -2023,12 +2066,12 @@ analyze_x_posterior <- function(xv,fv,xknown=NA) {
   n <- which(fv==max(fv))
   xmode <- xv[n]
   fmode <- fv[n] + (xmode-xv[n])*(fv[n+1]-fv[n])/dx
-
+  
   return_list <- list(x=xv,density=fv,dx=dx,
-                     xlolo=xlolo,xlo=xlo,xmed=xmed,xhi=xhi,xhihi=xhihi,
-                     xmean=xmean,xmode=xmode,
-                     flolo=flolo,flo=flo,fmed=fmed,fhi=fhi,fhihi=fhihi,
-                     fmean=fmean,xmode=xmode)
+                      xlolo=xlolo,xlo=xlo,xmed=xmed,xhi=xhi,xhihi=xhihi,
+                      xmean=xmean,xmode=xmode,
+                      flolo=flolo,flo=flo,fmed=fmed,fhi=fhi,fhihi=fhihi,
+                      fmean=fmean,fmode=fmode)
   if(!is.na(xknown)) {
     # Calculate the expectation (over the density) of (x-xknown)^2
     expected_sqr_err <- sum(dx*fv * (xv-xknown)^2)

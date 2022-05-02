@@ -9,6 +9,7 @@ fit_multivariate(
   Y,
   mod_spec,
   cindep_model,
+  prog_file = NA,
   save_file = NA,
   hjk_control = list()
 )
@@ -25,11 +26,14 @@ fit_multivariate(
 cindep_model$th_y_bar and cindep_model$th_y_bar_scale.}
 
 \item{save_file}{String containing the progress file name}
+
+\item{hjk_control}{A list passed to the function dfoptim::hjk()}
 }
 \value{
 A list object containing  the best-fit parameter vector (th_y), and
-  the unconstrained best-fit parameter (th_y_bar), and the return object from
-  the optimization (hjk_output).
+  the unconstrained best-fit parameter (th_y_bar), the return object from
+  the optimization (hjk_output), the model specification (mod_spec), and 
+  a record of how many legs it took for optimization (legs)
 }
 \description{
 Do a maximum likelihood fit of  multivariate mixed cumulative probit model

@@ -16,7 +16,7 @@ A vector with the values that represent NA
 \description{
 The input is the Missing_Values column in var_info, which must have a length
 equal to the number of columns in the data file. This function is for use in
-[load_cp_data] to ensure only values expected for each trait are available.
+[reformat_mcp_data] to ensure only values expected for each trait are available.
 }
 \examples{
 # Call parse_NA_values to return a vector of individual proxies for NA

@@ -4,26 +4,17 @@
 \alias{calc_x_posterior}
 \title{Calculate the posterior density of x}
 \usage{
-calc_x_posterior(
-  y,
-  th_x,
-  th_y,
-  mod_spec,
-  xcalc = c(),
-  normalize = T,
-  seed = NA
-)
+calc_x_posterior(y, th_x, model, xcalc = c(), normalize = T, seed = NA)
 }
 \arguments{
 \item{y}{The response vector for a single observation}
 
 \item{th_x}{Parameterization for prior on x}
 
-\item{th_y}{Parameterization for likelihood}
+\item{model}{The model used to calculate the posterior probability}
 
-\item{mod_spec}{The model specification}
-
-\item{xcalc}{A vector of ages at which to calculate the posterior probability}
+\item{xcalc}{A vector of evenly spaced values at which to calculate the 
+posterior probability density (default: c())}
 
 \item{normalize}{Whether or not to normalize to integrate to 1 (default:
 TRUE).}

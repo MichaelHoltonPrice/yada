@@ -36,14 +36,14 @@ that should be merged). Further details on each column are provided next.
 
 Details on Variable: The variable names must be unique. An error is thrown if
 they are not. Each variable must match a column name in the corresponding
-data file (see [load_cp_data]).
+data file (see [reformat_mcp_data]).
 
 Details on Type: There should be exactly one variable specified as type x
 (for age estimation, x is age). Response variables (which comprise the matrix
 Y) must be either ordinal or continuous. Additional variables that should be
 kept in the returned data frame should be marked as other (likely, these are
 covariates). Variables that are not specified in the variable information
-file but are in the data file are ignored in [load_cp_data].
+file but are in the data file are ignored in [reformat_mcp_data].
 
 Details on Categories: Each ordinal variable must explicitly define the
 allowable categories and their order in the format expected by
