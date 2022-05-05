@@ -1817,7 +1817,9 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
 #' @param var_name A character string with the variable of interest
 #' @param th_x The prior parameterization on x  
 #' @param point_est A character string with the type of point estimate to be 
-#'   returned: mean ("xmean"), median ("xmed"), or mode ("xmode")  
+#'   returned: mean ("xmean"), median ("xmed"), or mode ("xmode") 
+#' @param ci_type Whether the credible interval should be calculated using 
+#'   "quantiles" or highest density interval ("hdi"). (default is "hdi") 
 #' @param xcalc A vector of evenly-spaced values at which to calculate the 
 #'   posterior density 
 #' @param save_file A logical for whether the results should be saved. 
@@ -1825,14 +1827,15 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
 #'
 #' @export
 generate_ord_ci <- function(data_dir, analysis_name, var_name,
-                            th_x, point_est, xcalc, save_file=F) {
+                            th_x, point_est, ci_type="hdi", 
+                            xcalc, save_file=F) {
   
   # Load the best ordinal model
   ord_model <- load_best_univariate_model(data_dir, analysis_name,
                                           var_name)
   
   # Calculate the confidence intervals and point estimate
-  ci_df <- calc_ci_ord(ord_model, th_x, point_est, xcalc)
+  ci_df <- calc_ci_ord(ord_model, th_x, point_est, ci_type, xcalc)
   
   if(save_file) {
     saveRDS(ci_df, build_file_path(data_dir,

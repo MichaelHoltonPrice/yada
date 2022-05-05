@@ -11,6 +11,7 @@ generate_ord_ci(
   var_name,
   th_x,
   point_est,
+  ci_type = "hdi",
   xcalc,
   save_file = F
 )
@@ -21,6 +22,7 @@ generate_ord_ci(
   var_name,
   th_x,
   point_est,
+  ci_type = "hdi",
   xcalc,
   save_file = F
 )
@@ -36,6 +38,9 @@ generate_ord_ci(
 
 \item{point_est}{A character string with the type of point estimate to be 
 returned: mean ("xmean"), median ("xmed"), or mode ("xmode")}
+
+\item{ci_type}{Whether the credible interval should be calculated using 
+"quantiles" or highest density interval ("hdi"). (default is "hdi")}
 
 \item{xcalc}{A vector of evenly-spaced values at which to calculate the 
 posterior density}

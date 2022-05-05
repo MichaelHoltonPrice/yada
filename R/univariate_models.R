@@ -884,12 +884,14 @@ get_approx_x_range_cont <- function(w,th_w,mod_spec) {
 #' @param th_x Parameterization for prior on x
 #' @param point_est A character string with the type of point estimate to be 
 #'   returned: mean ("xmean"), median ("xmed"), or mode ("xmode")  
+#' @param ci_type Whether the credible interval should be calculated using 
+#'   "quantiles" or highest density interval ("hdi").
 #' @param xcalc A vector of evenly-spaced values at which to calculate the 
 #'   posterior density 
 #' 
 #' @export
 #'
-calc_ci_ord <- function(ord_model, th_x, point_est, xcalc) {
+calc_ci_ord <- function(ord_model, th_x, point_est, ci_type, xcalc) {
   
   # Initialize matrix (M+1 x 6)
   ci_mat <- matrix(nrow=(ord_model$mod_spec$M+1), ncol=6)

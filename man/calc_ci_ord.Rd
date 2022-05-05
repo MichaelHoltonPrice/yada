@@ -4,7 +4,7 @@
 \alias{calc_ci_ord}
 \title{Calculate ordinal model confidence intervals}
 \usage{
-calc_ci_ord(ord_model, th_x, point_est, xcalc)
+calc_ci_ord(ord_model, th_x, point_est, ci_type, xcalc)
 }
 \arguments{
 \item{ord_model}{List containing the parameter vector for y [th_y] and model
@@ -15,6 +15,9 @@ output of `solve_ord_problem`)}
 
 \item{point_est}{A character string with the type of point estimate to be 
 returned: mean ("xmean"), median ("xmed"), or mode ("xmode")}
+
+\item{ci_type}{Whether the credible interval should be calculated using 
+"quantiles" or highest density interval ("hdi").}
 
 \item{xcalc}{A vector of evenly-spaced values at which to calculate the 
 posterior density}
