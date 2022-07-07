@@ -1659,7 +1659,8 @@ univariate_batch_calc <- function(data_dir, analysis_name,
   problem <- readRDS(build_file_path(data_dir, analysis_name, 'main_problem'))
   
   # Load the prior on th_x 
-  th_x <- readRDS(build_file_path(data_dir, analysis_name, 'solutionx'))
+  # th_x is now provided
+  # th_x <- readRDS(build_file_path(data_dir, analysis_name, 'solutionx'))
   
   ## Loop through available response variables in test sample
   for(i in input_cols) {
@@ -1752,7 +1753,8 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
   
   
   # Calculate parameterization for prior on x (age)
-  th_x <- readRDS(build_file_path(data_dir,analysis_name,"solutionx"))
+  # th_x is now provided
+  # th_x <- readRDS(build_file_path(data_dir,analysis_name,"solutionx"))
   
   # Extract response variables as matrix Y in order expected by multivariate model
   ef_vars <- grep("_EF|_Oss", names(test_samp))
