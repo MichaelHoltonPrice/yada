@@ -1751,16 +1751,12 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
   problem <- readRDS(build_file_path(data_dir, analysis_name,
                                      'main_problem'))
   
+  # Extract response variables as matrix Y in order expected by 
+  # multivariate model, via problem file
+  Y0 <- test_samp[-demo_cols]  # remove demographic columns
+  var_order <- match(problem$var_names, names(Y0))  # determine variable order
+  Y <- t(Y0[var_order])  # reorder variables, transpose matrix
   
-  # Calculate parameterization for prior on x (age)
-  # th_x is now provided
-  # th_x <- readRDS(build_file_path(data_dir,analysis_name,"solutionx"))
-  
-  # Extract response variables as matrix Y in order expected by multivariate model
-  ef_vars <- grep("_EF|_Oss", names(test_samp))
-  dent_vars <- grep("man_|max_", names(test_samp))
-  lb_vars <- grep("DL|PB|MSB|DB", names(test_samp))
-  Y <- t(test_samp[c(ef_vars, dent_vars, lb_vars)])
   if (!all(rownames(Y) == problem$var_names)) {
     stop("Problem with organizing response variables")
   }
@@ -1776,6 +1772,12 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
   file_type <- paste0(model_type,"_model")
   model <- readRDS(build_file_path(data_dir,analysis_name,file_type))
   
+  ## Remove variables not included in multivariate model
+  if (nrow(Y) != (model$mod_spec$J + model$mod_spec$K)) {
+       remove_idx <- which(rownames(Y) == model$removed_vars)
+       Y <- Y[-remove_idx, ]
+  }
+  
   for(i in 1:ncol(Y)) {
     print(paste0('Calculating age posterior for observation=',i))
     
@@ -1783,6 +1785,7 @@ multivariate_batch_calc <- function(data_dir, analysis_name,
     
     if (all(is.na(Y[,i]))) {
       pred0[i,] <- rep(NA,7)
+      next
     }
     
     x_post <- calc_x_posterior(Y[,i], th_x, model, xcalc, normalize=T, seed=NA)

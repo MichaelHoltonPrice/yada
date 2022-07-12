@@ -1651,6 +1651,12 @@ fit_multivariate <- function(x,Y,mod_spec,
                  mod_spec=mod_spec,
                  leg=leg)
   
+  # Add removed_vars to list, if applicable
+  if ("removed_vars" %in% names(cindep_model)) {
+       output <- append(output, 
+                        list(removed_vars=cindep_model$removed_vars))
+  }
+  
   if (!is.na(save_file)) {
     saveRDS(output, save_file)
   }
