@@ -780,7 +780,7 @@ remove_missing_variables <- function(y0,mod_spec0) {
   # Find J and K for current individual
   if(J0 == 0) {
     J = 0
-  } else if (J0 == 1 & sum(keep[1]) == 0) {
+  } else if (J0 == 1 && keep[1]) {
     J = 1
   } else {
     J <- sum(keep[1:J0])
