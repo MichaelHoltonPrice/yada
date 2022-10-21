@@ -1144,7 +1144,7 @@ build_file_path <- function(data_dir,analysis_name,file_type,
     file_name <- paste0(file_name,"_ord_j_",j,"_",var_name,
                         "_",mean_spec,"_",noise_spec,".rds")
   } else if (file_type == "ordinal_ci") {
-    file_name <- paste0("ordinal_ci_",analysis_name,"_j_",j,"_",var_name,".rds")
+    file_name <- paste0("ordinal_ci_",analysis_name,"_",var_name,".rds")
   } else if (file_type == "univariate_ord_rmd") {
     file_name <- paste0(analysis_name,"_ord_j_",j,"_",var_name,".Rmd")
   } else if (file_type ==  "univariate_cont_soln") {
