@@ -913,7 +913,7 @@ calc_ci_ord <- function(ord_model, th_x, point_est, ci_type, xcalc) {
   # Format ci_mat as final data frame
   ci_df <- as.data.frame(ci_mat)
   colnames(ci_df) <- c("ord_stage", "point_est", "lower99",
-                       "lower95", "upper95", "uperr99")
+                       "lower95", "upper95", "upper99")
   
   return(ci_df)
 }
