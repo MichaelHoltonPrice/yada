@@ -912,13 +912,24 @@ remove_missing_variables <- function(y0,mod_spec0) {
 #' @param x The independent variable
 #' @param Y The matrix of responses
 #' @param mod_spec The model specification
-#' @param remove_log_ord_cases Whether or not to remove log_ord edge cases from
+#' @param remove_log_ord Whether or not to remove log_ord edge cases from
 #'   the return list, calc_data. remove_log_ord_cases should be TRUE if
 #'   calc_data is being used to calculate a likelihood function and should,
 #'   typically, otherwise be FALSE (e.g., if log_ord is being used for
 #'   posterior inference).
 #' @param no_missing_var (Default: TRUE) Whether or not to require all
 #'   variables to have no missing values.
+#' @param leverage_duplicates (Default: TRUE) Whether or not to take advantage
+#'   of duplicates in the matrix Y, for which the remap calculation does not
+#'   need to be redone. Almost always this should be TRUE since there is no
+#'   downside to doing so, but allowing it to be FALSE simplifies the package
+#'   tests. Furthermore, all of the columns in Y must be identical in order to
+#'   leverage duplicates, though this choice could be revisited for future
+#'   versions of yada. The reason leveraging duplicates is so useful, even for
+#'   this very limited case, is that it applies usually to posterior inference
+#'   for individual samples, which increases the speed of the prep calculations
+#'   by a factor equal to the number of data points, N, which provides a major
+#'   increase in overall runtime for the posterior inference.
 #'
 #' @return Data needed for a speedy negative log-likelihood calculation (calc_data)
 #'
@@ -927,7 +938,8 @@ prep_for_neg_log_lik_multivariate <- function(x,
                                               Y,
                                               mod_spec,
                                               remove_log_ord=FALSE,
-                                              no_missing_var=TRUE) {
+                                              no_missing_var=TRUE,
+                                              leverage_duplicates=TRUE) {
   N <- length(x)
   if(N != ncol(Y)) {
     stop('length of x should equal the number of columns in Y')
@@ -950,6 +962,18 @@ prep_for_neg_log_lik_multivariate <- function(x,
   if (no_missing_var) {
     if(any(rowSums(is.na(Y)) == ncol(Y))) {
       stop('Y should not contain variables with all missing values')
+    }
+  }
+
+  # First, check if we can leverage duplicates (if applicable)
+  if (leverage_duplicates) {
+    # Extract the first row
+    y1 <- Y[,1]
+    for (n in 2:ncol(Y)) {
+      if (!all.equal(Y[,n], y1)) {
+        leverage_duplicates <- FALSE
+        break
+      }
     }
   }
 
@@ -979,16 +1003,35 @@ prep_for_neg_log_lik_multivariate <- function(x,
 
   # Call remove_missing_variables to populate the following lists:
   calc_data <- list()
+  # If leverage_duplicates is TRUE, remember the first non-edge case and use
+  # it for future duplicates
+  if (leverage_duplicates) {
+    have_first_case <- FALSE
+  }
   for(n in 1:N) {
     if (all(is.na(Y[,n]))) {
       calc_data[[n]] <- list(log_ord_edge_case=TRUE)
     } else {
       # Remove missing variables
-      remap <- tryCatch({remove_missing_variables(Y[,n],mod_spec)},
-        warning=function(w) {
-          message(n)
-        })
-
+      if (leverage_duplicates) {
+        if (have_first_case) {
+          # Explicitly set this equal the saved version to improve readability
+          # since it is a cheap operation
+          remap <- saved_remap
+        } else {
+          remap <- tryCatch({remove_missing_variables(Y[,n],mod_spec)},
+            warning=function(w) {
+              message(n)
+            })
+          saved_remap <- remap
+          have_first_case <- TRUE
+        }
+      } else {
+        remap <- tryCatch({remove_missing_variables(Y[,n],mod_spec)},
+          warning=function(w) {
+            message(n)
+          })
+      }
       if (length(remap$y) == 0) {
         stop("This should not happen")
         next
