@@ -966,11 +966,26 @@ prep_for_neg_log_lik_multivariate <- function(x,
   }
 
   # First, check if we can leverage duplicates (if applicable)
+  boolean.all.equal <- function(obj1, obj2) {
+    # A helper method to just return TRUE or FALSE for the comparison
+    # (if their is a mismatch, all.equal return a character object that
+    # describes a mismatch rather than FALSE)
+    comparison <- all.equal(obj1, obj2)
+    if (class(comparison) == 'character') {
+      return(FALSE)
+    } else if(class(comparison) == 'logical' ) {
+      return(comparison)
+    } else {
+      stop(paste('class(comparison) is ', class(comparison),
+                 ', not character or logical '))
+    }
+
+  }
   if (leverage_duplicates) {
     # Extract the first row
     y1 <- Y[,1]
     for (n in 2:ncol(Y)) {
-      if (!all.equal(Y[,n], y1)) {
+      if (!boolean.all.equal(Y[,n], y1)) {
         leverage_duplicates <- FALSE
         break
       }
